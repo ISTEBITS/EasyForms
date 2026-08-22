@@ -1,6 +1,6 @@
 import type { Form, FormResponse } from "@/types/form";
 import { apiRequest } from "./client";
-import type { MailStatusResponse, TestUserActivity } from "./types";
+import type { ApiKey, ApiKeyStats, MailStatusResponse, TestUserActivity } from "./types";
 
 type ApiPayload = Record<string, unknown>;
 
@@ -87,4 +87,25 @@ export const getFormResponses = async (formId: string) => {
 
 export const getFormById = async (formId: string) => {
   return formsApi.getById(formId);
+};
+
+export const apiKeysApi = {
+  list: async (): Promise<ApiKey[]> => {
+    return apiRequest<ApiKey[]>('/api-keys');
+  },
+
+  create: async (name: string, scopes?: string[], expiresInDays?: number | null): Promise<{ apiKey: string; id: string; name: string; expiresAt: string | null }> => {
+    return apiRequest<{ apiKey: string; id: string; name: string; expiresAt: string | null }>('/api-keys', {
+      method: 'POST',
+      body: JSON.stringify({ name, scopes, expiresInDays }),
+    });
+  },
+
+  revoke: async (keyId: string): Promise<void> => {
+    await apiRequest(`/api-keys/${keyId}`, { method: 'DELETE' });
+  },
+
+  stats: async (): Promise<ApiKeyStats[]> => {
+    return apiRequest<ApiKeyStats[]>('/api-keys/stats');
+  },
 };

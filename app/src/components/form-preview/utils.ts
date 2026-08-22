@@ -41,8 +41,8 @@ export const getPreviewClasses = (previewDevice: PreviewDevice) => {
   return {
     previewShellClass:
       previewDevice === "auto"
-        ? "relative border-none bg-transparent overflow-hidden rounded-3xl md:border md:border-zinc-800 md:bg-[#0a0a0a] p-1 sm:p-7"
-        : "relative bg-[#0a0a0a] overflow-hidden",
+        ? "relative border-none bg-transparent overflow-hidden rounded-sm md:border md:border-border md:bg-background p-1 sm:p-7"
+        : "relative bg-background overflow-hidden",
     bannerHeightClass:
       previewDevice === "auto"
         ? "relative h-40 w-full sm:h-56"
@@ -50,7 +50,11 @@ export const getPreviewClasses = (previewDevice: PreviewDevice) => {
           ? "relative h-36 w-full"
           : "relative h-56 w-full",
     headerPaddingClass:
-      previewDevice === "auto" ? "p-5 sm:p-6" : isForcedMobile ? "p-4" : "p-6",
+      previewDevice === "auto"
+        ? "p-5 sm:p-6"
+        : isForcedMobile
+          ? "p-4"
+          : "p-6",
     questionGridClass:
       previewDevice === "auto"
         ? "grid grid-cols-1 gap-4 md:grid-cols-2"

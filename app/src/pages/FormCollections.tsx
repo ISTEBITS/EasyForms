@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import type { ComponentType } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { FileText, Loader, MessageSquareText, Search } from "lucide-react";
+import { FileText, MessageSquareText, Search, ArrowRight, BarChart2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useForms } from "@/hooks/useForms";
 import type { Form } from "@/types/form";
@@ -11,6 +11,8 @@ import {
   filterFormsByDashboardScope,
   normalizeDashboardScope,
 } from "@/lib/dashboard-scope";
+import { EditorSkeleton, ResponsesSkeleton } from "@/components/ui/skeleton-new";
+import { stripMarkdown } from "@/lib/form-header-markdown";
 
 function FormCollectionLayout({
   title,
@@ -19,6 +21,7 @@ function FormCollectionLayout({
   forms,
   loading,
   onOpen,
+  isEditor = false,
 }: {
   title: string;
   description: string;
@@ -26,6 +29,7 @@ function FormCollectionLayout({
   forms: Form[];
   loading: boolean;
   onOpen: (form: Form) => void;
+  isEditor?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const filtered = useMemo(
@@ -37,64 +41,89 @@ function FormCollectionLayout({
   );
 
   if (loading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="flex items-center gap-2 text-sm text-zinc-400">
-          <Loader className="h-4 w-4 animate-spin" />
-          Loading forms
-        </div>
-      </div>
-    );
+    return isEditor ? <EditorSkeleton /> : <ResponsesSkeleton />;
   }
 
   return (
-    <section className="space-y-4">
-      <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 px-4 py-3">
-        <div className="flex items-center gap-3">
-          <div className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-zinc-700 bg-zinc-900 text-zinc-200">
-            <Icon className="h-4 w-4" />
+    <div className="space-y-6 animate-in fade-in-50 duration-200 font-sans p-4">
+      {/* Page Banner Header */}
+      <div className="rounded-xs border border-zinc-800 bg-zinc-950/80 p-6 shadow-sm">
+        <div className="flex items-center gap-3.5">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xs border border-zinc-800 bg-zinc-900 text-white">
+            <Icon className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-sm font-semibold text-zinc-100 sm:text-base">{title}</h1>
-            <p className="text-xs text-zinc-500">{description}</p>
+            <h1 className="text-2xl font-bold tracking-tight text-white">{title}</h1>
+            <p className="text-sm text-zinc-400 mt-0.5">{description}</p>
           </div>
         </div>
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+      {/* Search Input */}
+      <div className="relative max-w-md">
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search forms..."
-          className="h-9 rounded-md border-zinc-700 bg-zinc-950 pl-9 text-zinc-100 placeholder:text-zinc-500"
+          placeholder={`Search ${title.toLowerCase()} forms`}
+          className="h-10 rounded-xs border-zinc-800 bg-black pl-10 text-sm text-white placeholder:text-zinc-500 focus:border-zinc-700"
         />
       </div>
 
+      {/* Grid of Forms */}
       {filtered.length === 0 ? (
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-8 text-center text-sm text-zinc-500">
-          No forms found.
+        <div className="rounded-xs border border-zinc-800 bg-zinc-950/80 p-16 text-center text-sm text-zinc-400">
+          No matching forms found.
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((form) => (
-            <button
-              key={form.id}
+            <div
+              key={form.id || form._id}
               onClick={() => onOpen(form)}
-              className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4 text-left hover:border-zinc-700"
+              className="group cursor-pointer rounded-xs border border-zinc-800/80 bg-black p-5 transition-all duration-200 hover:border-zinc-600 hover:bg-zinc-900/40 flex flex-col justify-between"
             >
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <p className="truncate text-sm font-medium text-zinc-100">{form.title}</p>
-                <span className="text-xs text-zinc-500">{form.responseCount || 0}</span>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xs border border-zinc-800 bg-zinc-900 text-white group-hover:border-zinc-700">
+                    <FileText className="h-4.5 w-4.5 text-zinc-300" />
+                  </div>
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-semibold border ${form.isPublished
+                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                        : "border-zinc-800 bg-zinc-900 text-zinc-400"
+                      }`}
+                  >
+                    {form.isPublished ? "Published" : "Draft"}
+                  </span>
+                </div>
+
+                <div>
+                  <h3 className="text-base font-bold text-white group-hover:text-purple-300 transition-colors">
+                    {form.title}
+                  </h3>
+                  <p className="mt-1 line-clamp-2 text-xs text-zinc-400 leading-relaxed">
+                    {stripMarkdown(form.description || "") || "No description provided."}
+                  </p>
+                </div>
               </div>
-              <p className="line-clamp-2 text-xs text-zinc-500">
-                {form.description || "No description provided"}
-              </p>
-            </button>
+
+              <div className="mt-6 flex items-center justify-between pt-3 border-t border-zinc-800/80 text-xs text-zinc-400">
+                <span className="flex items-center gap-1.5 font-medium text-zinc-300 text-xs">
+                  <BarChart2 className="h-4 w-4 text-zinc-400" />
+                  {form.responseCount || 0} responses
+                </span>
+
+                <span className="flex items-center gap-1 text-xs font-semibold text-white group-hover:translate-x-0.5 transition-transform">
+                  Open {isEditor ? "Editor" : "Analytics"}
+                  <ArrowRight className="h-4 w-4" />
+                </span>
+              </div>
+            </div>
           ))}
         </div>
       )}
-    </section>
+    </div>
   );
 }
 
@@ -115,11 +144,12 @@ export function EditorFormsPage() {
 
   return (
     <FormCollectionLayout
-      title="Editor"
-      description="Pick a form to open in editor mode."
+      title="Form Editor"
+      description="Select a form to edit questions, logic, and settings."
       icon={FileText}
       forms={scopedForms}
       loading={loading}
+      isEditor={true}
       onOpen={(form) => {
         navigate(`/editor/${form.id || form._id}${location.search || ""}`, {
           state: { form },
@@ -146,13 +176,16 @@ export function ResponsesFormsPage() {
 
   return (
     <FormCollectionLayout
-      title="Responses"
-      description="Pick a form to view response analytics."
+      title="Form Responses"
+      description="Select a form to inspect submission analytics and exported data."
       icon={MessageSquareText}
       forms={scopedForms}
       loading={loading}
+      isEditor={false}
       onOpen={(form) => {
-        navigate(`/form/${form.id || form._id}/responses${location.search || ""}`);
+        navigate(
+          `/form/${form.id || form._id}/responses${location.search || ""}`,
+        );
       }}
     />
   );

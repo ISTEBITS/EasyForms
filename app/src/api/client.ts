@@ -2,10 +2,12 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api"
 
 export class ApiError extends Error {
   status: number;
+  code?: string;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.status = status;
+    this.code = code;
     this.name = "ApiError";
   }
 }
@@ -22,9 +24,21 @@ function getErrorMessage(payload: unknown, fallback: string): string {
   return fallback;
 }
 
+function getErrorCode(payload: unknown): string | undefined {
+  if (
+    payload &&
+    typeof payload === "object" &&
+    "code" in payload &&
+    typeof payload.code === "string"
+  ) {
+    return payload.code;
+  }
+  return undefined;
+}
+
 function hasSuccessFalse(
   payload: unknown,
-): payload is { success: false; message?: string } {
+): payload is { success: false; message?: string; code?: string } {
   return Boolean(
     payload &&
       typeof payload === "object" &&
@@ -54,13 +68,14 @@ export async function apiRequest<T>(
   }
 
   if (hasSuccessFalse(data)) {
-    throw new ApiError(response.status, data.message || "Action failed");
+    throw new ApiError(response.status, data.message || "Action failed", data.code);
   }
 
   if (!response.ok) {
     throw new ApiError(
       response.status,
       getErrorMessage(data, "Something went wrong"),
+      getErrorCode(data),
     );
   }
 

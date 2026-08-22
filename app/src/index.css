@@ -1,160 +1,208 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&display=swap');
-
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    /* Vercel Dark Theme - Zinc Scale */
-    --background: 0 0% 2%;           /* zinc-950 */
-    --foreground: 0 0% 98%;          /* zinc-100 */
-    --card: 0 0% 4%;                 /* zinc-900 */
-    --card-foreground: 0 0% 98%;     /* zinc-100 */
-    --popover: 0 0% 4%;              /* zinc-900 */
-    --popover-foreground: 0 0% 98%;  /* zinc-100 */
-    --primary: 0 0% 98%;             /* zinc-100 */
-    --primary-foreground: 0 0% 2%;   /* zinc-950 */
-    --secondary: 0 0% 12%;           /* zinc-800 */
-    --secondary-foreground: 0 0% 98%; /* zinc-100 */
-    --muted: 0 0% 12%;               /* zinc-800 */
-    --muted-foreground: 0 0% 52%;    /* zinc-500 */
-    --accent: 0 0% 15%;              /* zinc-750 equivalent */
-    --accent-foreground: 0 0% 98%;   /* zinc-100 */
-    --destructive: 0 72% 51%;        /* red-500 */
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 15%;              /* zinc-800 */
-    --input: 0 0% 15%;               /* zinc-800 */
-    --ring: 0 0% 30%;                /* zinc-600 */
-    --radius: 0.6rem;                  /* Sharp corners */
-  }
-}
+/* ===========================
+   Geist Design Tokens (Dark Mode)
+=========================== */
 
 @layer base {
-  * {
-    @apply border-border;
+  :root, .dark {
+    color-scheme: dark;
+
+    /* Foreground & Background colors */
+    --geist-background: #000000;
+    --geist-foreground: #ffffff;
+    --background: #000000;
+    --background-secondary: #0a0a0a;
+    --background-tertiary: #111111;
+
+    --foreground: #ffffff;
+    --foreground-muted: #888888;
+    --foreground-subtle: #666666;
+
+    /* Accent Grayscales (Geist Scale) */
+    --accents-1: #111111;
+    --accents-2: #222222;
+    --accents-3: #333333;
+    --accents-4: #444444;
+    --accents-5: #666666;
+    --accents-6: #888888;
+    --accents-7: #eaeaea;
+    --accents-8: #fafafa;
+
+    /* Status & Feedback */
+    --geist-error: #f85149;
+    --geist-error-light: rgba(248, 81, 73, 0.1);
+    --geist-success: #0070f3;
+    --geist-success-light: rgba(0, 112, 243, 0.1);
+    --geist-warning: #f5a623;
+    --geist-warning-light: rgba(245, 166, 35, 0.1);
+
+    /* Typography */
+    --font-sans: "Geist Sans", "Geist Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-mono: "Geist Mono", SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+
+    /* Strict Geist Corners (Low Radius) */
+    --radius-xs: 4px;
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 14px;
+    --radius: 6px;
+
+    /* Architectural Borders & Surfaces */
+    --border: #222222;
+    --border-hover: #444444;
+    --surface: rgba(10, 10, 10, 0.85);
+    --surface-solid: #0a0a0a;
+
+    /* Shadows (Subtle / Minimal) */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.5);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.6);
+    --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.7);
+
+    /* Motion */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Radix / Shadcn variables mapping */
+    --card: #0a0a0a;
+    --card-foreground: #ffffff;
+    --popover: #0a0a0a;
+    --popover-foreground: #ffffff;
+    --primary: #ffffff;
+    --primary-foreground: #000000;
+    --secondary: #1f1f1f;
+    --secondary-foreground: #ffffff;
+    --muted: #1f1f1f;
+    --muted-foreground: #888888;
+    --accent: #151515;
+    --accent-foreground: #ffffff;
+    --destructive: #f85149;
+    --input: #222222;
+    --ring: #ffffff;
+
+    --sidebar: #050505;
+    --sidebar-foreground: #ffffff;
+    --sidebar-primary: #0070f3;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #151515;
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: #222222;
+    --sidebar-ring: #ffffff;
   }
-  
+
+  * {
+    @apply border-border outline-ring;
+  }
+
   html {
     scroll-behavior: smooth;
+    text-rendering: optimizeLegibility;
+    @apply font-sans bg-background text-foreground;
   }
-  
+
   body {
-    @apply bg-background text-foreground antialiased;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    background-color: var(--geist-background);
+    color: var(--geist-foreground);
   }
 
-  /* Selection styling */
   ::selection {
-    @apply bg-zinc-700 text-zinc-100;
-  }
-
-  /* Hide scrollbars globally while keeping scroll behavior */
-  html,
-  body,
-  * {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-
-  *::-webkit-scrollbar {
-    width: 0;
-    height: 0;
-    display: none;
+    background: var(--geist-foreground);
+    color: var(--geist-background);
   }
 }
+
+/* ===========================
+   Geist Utilities
+=========================== */
 
 @layer utilities {
-  /* Typography utilities */
-  .text-balance {
-    text-wrap: balance;
-  }
-  
-  .font-mono {
-    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  .container-app {
+    @apply mx-auto max-w-app px-6 lg:px-8 xl:px-10;
   }
 
-  /* Focus visible styling */
+  .section {
+    @apply py-20 lg:py-28;
+  }
+
+  .section-sm {
+    @apply py-12;
+  }
+
+  .surface {
+    background: var(--surface);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .card {
+    @apply rounded-sm border border-border bg-background;
+    transition: var(--transition-fast);
+  }
+
+  .card-hover:hover {
+    border-color: var(--border-hover);
+  }
+
+  .motion-default {
+    transition: var(--transition-normal);
+  }
+
+  .motion-fast {
+    transition: var(--transition-fast);
+  }
+
+  .motion-slow {
+    transition: var(--transition-slow);
+  }
+
   .focus-ring {
-    @apply focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-600;
+    @apply focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground focus-visible:ring-offset-0;
   }
 
-  /* Border utilities */
-  .border-subtle {
-    @apply border-zinc-800;
+  .hide-scrollbar {
+    @apply scrollbar-hide;
   }
 
-  .border-default {
-    @apply border-zinc-700;
+  /* Geist Typography System */
+  .type-h1 {
+    @apply font-sans text-3xl font-bold tracking-tight leading-tight text-foreground;
   }
-
-  /* Background utilities */
-  .bg-elevated {
-    @apply bg-zinc-900;
+  .type-h2 {
+    @apply font-sans text-2xl font-bold tracking-tight leading-snug text-foreground;
   }
-
-  .bg-sunken {
-    @apply bg-zinc-950;
+  .type-h3 {
+    @apply font-sans text-lg font-semibold tracking-tight leading-snug text-foreground;
   }
-
-  /* Text utilities */
-  .text-secondary {
-    @apply text-zinc-400;
+  .type-h4 {
+    @apply font-sans text-base font-semibold leading-normal text-foreground;
   }
-
-  .text-tertiary {
-    @apply text-zinc-500;
+  .type-body {
+    @apply font-sans text-sm font-normal leading-relaxed text-foreground;
   }
-}
-
-/* Form element base styles */
-input,
-textarea,
-select {
-  @apply bg-zinc-950 border-zinc-800 text-zinc-100 placeholder:text-zinc-600;
-  @apply focus:outline-none focus:border-zinc-600 focus:ring-0;
-  @apply transition-colors duration-200;
-}
-
-/* Button base styles */
-button {
-  @apply transition-colors duration-200;
-}
-
-button:disabled {
-  @apply opacity-50 cursor-not-allowed;
-}
-
-/* Link styles */
-a {
-  @apply text-zinc-300 hover:text-zinc-100 transition-colors duration-200;
-}
-
-/* Remove default focus outlines, use ring instead */
-*:focus {
-  @apply outline-none;
-}
-
-/* Ensure consistent border color inheritance */
-*,
-*::before,
-*::after {
-  border-color: hsl(var(--border));
-}
-
-
-
-@keyframes spinner-rotate {
-  from {
-    transform: rotate(0deg);
+  .type-body-sm {
+    @apply font-sans text-xs font-normal leading-normal text-accent-5;
   }
-  to {
-    transform: rotate(360deg);
+  .type-label {
+    @apply font-sans text-xs font-medium leading-none text-foreground;
+  }
+  .type-badge {
+    @apply font-mono text-xs font-semibold uppercase tracking-wider;
   }
 }
-
-.animate-spin {
-  animation: spinner-rotate 0.9s linear infinite !important;
+::selection {
+  background: #ffffff !important;
+  color: #000000 !important;
 }

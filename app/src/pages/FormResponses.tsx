@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useState } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Download,
   FileText,
@@ -9,17 +9,17 @@ import {
   ChevronRight,
   Loader,
   RefreshCw,
-  Search,
   Clock,
-} from 'lucide-react';
-import { ApiError, formsApi } from '@/api';
-import type { Form, FormResponse, Question, Answer } from '@/types/form';
-import { useAuth } from '@/context/auth';
+} from "lucide-react";
+import { ApiError, formsApi } from "@/api";
+import type { Form, FormResponse, Question, Answer } from "@/types/form";
+import { useAuth } from "@/context/auth";
 import {
   DASHBOARD_SCOPE_PARAM,
   isFormInDashboardScope,
   normalizeDashboardScope,
-} from '@/lib/dashboard-scope';
+} from "@/lib/dashboard-scope";
+import { ResponsesSkeleton } from "@/components/ui/skeleton-new";
 
 type FormResponseRow = FormResponse & { respondentEmail?: string };
 
@@ -29,17 +29,17 @@ const formatDate = (dateString: string) => {
   const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
 
   if (diffInHours < 24) {
-    return `Today, ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    return `Today, ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
   }
 
   if (diffInHours < 48) {
-    return `Yesterday, ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    return `Yesterday, ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
   }
 
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
   });
 };
 
@@ -48,28 +48,27 @@ export const FormResponses = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === "admin";
   const selectedScope = normalizeDashboardScope(
     searchParams.get(DASHBOARD_SCOPE_PARAM),
   );
   const scopeSearch =
-    isAdmin && selectedScope.startsWith('test:')
+    isAdmin && selectedScope.startsWith("test:")
       ? `?${DASHBOARD_SCOPE_PARAM}=${encodeURIComponent(selectedScope)}`
-      : '';
+      : "";
 
   const [form, setForm] = useState<Form | null>(null);
   const [responses, setResponses] = useState<FormResponseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   const fetchData = useCallback(
     async (showGlobalLoader = false) => {
       if (!id) {
-        setError('Invalid form URL');
+        setError("Invalid form URL");
         setLoading(false);
         setRefreshing(false);
         return;
@@ -87,7 +86,7 @@ export const FormResponses = () => {
         ]);
 
         if (!isFormInDashboardScope(formData, isAdmin, selectedScope)) {
-          setError('This form is outside the selected dashboard scope');
+          setError("This form is outside the selected dashboard scope");
           setForm(null);
           setResponses([]);
           return;
@@ -96,11 +95,12 @@ export const FormResponses = () => {
         setForm(formData);
         setResponses(responsesData);
       } catch (err: unknown) {
-        const message = err instanceof ApiError ? err.message : 'Failed to load responses';
+        const message =
+          err instanceof ApiError ? err.message : "Failed to load responses";
         setError(message);
 
         if (err instanceof ApiError && err.status === 401) {
-          navigate('/login');
+          navigate("/login");
         }
       } finally {
         setLoading(false);
@@ -115,15 +115,7 @@ export const FormResponses = () => {
   }, [fetchData]);
 
   const safeResponses = Array.isArray(responses) ? responses : [];
-
-  const filteredResponses = safeResponses.filter((response) => {
-    const searchLower = searchQuery.toLowerCase();
-    const matchesEmail = response.respondentEmail?.toLowerCase().includes(searchLower);
-    const matchesContent = response.answers?.some((a: Answer) =>
-      String(a.value).toLowerCase().includes(searchLower),
-    );
-    return matchesEmail || matchesContent;
-  });
+  const filteredResponses = safeResponses;
 
   const totalPages = Math.ceil(filteredResponses.length / itemsPerPage);
   const paginatedResponses = filteredResponses.slice(
@@ -135,31 +127,33 @@ export const FormResponses = () => {
     if (!form || !responses.length) return;
 
     const headers = [
-      'Submission Date',
-      'Email',
+      "Submission Date",
+      "Email",
       ...questions.map((q: Question) => `"${q.title}"`),
     ];
 
     const rows = responses.map((response: FormResponseRow) => {
       const date = `"${new Date(response.submittedAt).toLocaleString()}"`;
-      const respondentEmail = response.respondentEmail || 'Anonymous';
+      const respondentEmail = response.respondentEmail || "Anonymous";
       const answers = questions.map((q: Question) => {
-        const answerObj = response.answers.find((a: Answer) => a.questionId === q.id);
-        let val = answerObj ? answerObj.value : '';
-        if (Array.isArray(val)) val = val.join(', ');
-        val = String(val || '').replace(/"/g, '""');
+        const answerObj = response.answers.find(
+          (a: Answer) => a.questionId === q.id,
+        );
+        let val = answerObj ? answerObj.value : "";
+        if (Array.isArray(val)) val = val.join(", ");
+        val = String(val || "").replace(/"/g, '""');
         return `"${val}"`;
       });
 
-      return [date, respondentEmail, ...answers].join(',');
+      return [date, respondentEmail, ...answers].join(",");
     });
 
-    const csvContent = [headers.join(','), ...rows].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const csvContent = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
-    link.setAttribute('download', `${form.title}_responses.csv`);
+    link.setAttribute("download", `${form.title}_responses.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -182,29 +176,24 @@ export const FormResponses = () => {
   };
 
   const questions = (form?.questions ?? []).filter(
-    (question) => question.type !== 'section_break',
+    (question) => question.type !== "section_break",
   );
 
   if (loading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-900/70 px-4 py-3 text-sm text-zinc-400">
-          <Loader className="h-4 w-4 animate-spin" />
-          Loading responses
-        </div>
-      </div>
-    );
+    return <ResponsesSkeleton />;
   }
 
   if (error) {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900/70 p-6 text-center">
-          <h2 className="text-lg font-semibold text-zinc-100">Failed to Load</h2>
-          <p className="mt-2 text-sm text-zinc-400">{error}</p>
+        <div className="w-full max-w-md rounded-sm border border-border bg-accent-1 p-6 text-center">
+          <h2 className="text-lg font-semibold text-foreground">
+            Failed to Load
+          </h2>
+          <p className="mt-2 text-sm text-accent-5">{error}</p>
           <button
             onClick={() => navigate(`/dashboard${scopeSearch}`)}
-            className="mt-5 rounded-md border border-zinc-700 bg-zinc-950 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-900"
+            className="mt-5 rounded-sm border border-border bg-background px-4 py-2 text-sm text-foreground transition-geist duration-150 hover:bg-accent-1"
           >
             Return to Dashboard
           </button>
@@ -214,106 +203,128 @@ export const FormResponses = () => {
   }
 
   return (
-    <div className="min-h-[60vh]">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-900/60 px-4 py-3">
+    <div className="min-h-[60vh] p-4">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-sm border border-border bg-accent-1/60 px-4 py-3">
         <div className="min-w-0">
-          <h1 className="truncate text-sm font-semibold text-zinc-100 sm:text-base">{form?.title}</h1>
-          <p className="text-xs text-zinc-500">Response analytics</p>
+          <h1 className="truncate text-sm font-semibold text-foreground sm:text-base">
+            {form?.title}
+          </h1>
+          <p className="text-xs text-accent-5">Response analytics</p>
         </div>
-          <button
-            onClick={handleExportCSV}
-            disabled={responses.length === 0}
-            className="inline-flex items-center gap-2 rounded-md bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-950 hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Download className="h-4 w-4" />
-            <span className="hidden sm:inline">Export CSV</span>
-          </button>
+        <button
+          onClick={handleExportCSV}
+          disabled={responses.length === 0}
+          className="inline-flex items-center gap-2 rounded-sm bg-foreground px-3 py-2 text-sm font-medium text-background transition-geist duration-150 hover:bg-foreground/90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Download className="h-4 w-4" />
+          <span className="hidden sm:inline">Export CSV</span>
+        </button>
       </div>
       <main>
         <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
           {[
-            { label: 'Total Responses', value: stats.total, icon: FileText },
-            { label: 'Today', value: stats.today, icon: Clock },
-            { label: 'This Week', value: stats.thisWeek, icon: Calendar },
-            { label: 'Unique Users', value: stats.uniqueEmails, icon: Users },
+            { label: "Total Responses", value: stats.total, icon: FileText },
+            { label: "Today", value: stats.today, icon: Clock },
+            { label: "This Week", value: stats.thisWeek, icon: Calendar },
+            { label: "Unique Users", value: stats.uniqueEmails, icon: Users },
           ].map((stat) => (
-            <div key={stat.label} className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
+            <div
+              key={stat.label}
+              className="rounded-sm border border-border bg-accent-1/60 p-4"
+            >
               <div className="mb-2 flex items-center justify-between">
-                <p className="text-xs uppercase tracking-wide text-zinc-500">{stat.label}</p>
-                <stat.icon className="h-4 w-4 text-zinc-400" />
+                <p className="text-xs uppercase tracking-wide text-accent-5">
+                  {stat.label}
+                </p>
+                <stat.icon className="h-4 w-4 text-accent-4" />
               </div>
-              <p className="text-2xl font-semibold text-zinc-100">{stat.value}</p>
+              <p className="text-2xl font-semibold text-foreground">
+                {stat.value}
+              </p>
             </div>
           ))}
         </div>
 
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-sm font-medium text-zinc-300">Responses ({filteredResponses.length})</h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-foreground font-sans">
+            Responses ({filteredResponses.length})
+          </h2>
           <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-              <input
-                type="text"
-                placeholder="Search responses..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="h-9 w-full rounded-md border border-zinc-800 bg-zinc-900 pl-9 pr-3 text-sm text-zinc-200 placeholder:text-zinc-500 focus:border-zinc-600 sm:w-72"
-              />
-            </div>
             <button
               onClick={() => void fetchData(false)}
               disabled={refreshing}
-              className="inline-flex h-9 items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900 px-3 text-sm text-zinc-300 hover:bg-zinc-800 disabled:opacity-60"
+              className="inline-flex h-8 items-center gap-2 rounded-sm border border-border bg-background px-3 text-xs font-sans text-foreground transition-all duration-150 hover:bg-accent-1 disabled:opacity-60"
             >
               {refreshing ? (
-                <Loader className="h-4 w-4 animate-spin" />
+                <Loader className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                <RefreshCw className="h-4 w-4" />
+                <RefreshCw className="h-3.5 w-3.5" />
               )}
               <span className="hidden sm:inline">Reload</span>
             </button>
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/60">
+        <div className="overflow-hidden rounded-sm border border-border bg-accent-1/60">
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="border-b border-zinc-800 bg-zinc-950/60">
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500">Date</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500">Respondent</th>
+                <tr className="border-b border-border bg-accent-1/60">
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-accent-5">
+                    Date
+                  </th>
+                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-accent-5">
+                    Respondent
+                  </th>
                   {questions.map((q: Question) => (
-                    <th key={q.id} className="min-w-[180px] px-4 py-3 text-xs font-medium uppercase tracking-wide text-zinc-500">
-                      <span className="block truncate max-w-[180px]">{q.title}</span>
+                    <th
+                      key={q.id}
+                      className="min-w-[180px] px-4 py-3 text-xs font-medium uppercase tracking-wide text-accent-5"
+                    >
+                      <span className="block max-w-[180px] truncate">
+                        {q.title}
+                      </span>
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-800">
+              <tbody className="divide-y divide-border">
                 {paginatedResponses.length === 0 ? (
                   <tr>
-                    <td colSpan={questions.length + 2} className="px-4 py-12 text-center text-sm text-zinc-500">
+                    <td
+                      colSpan={questions.length + 2}
+                      className="px-4 py-12 text-center text-sm text-accent-5"
+                    >
                       No responses found
                     </td>
                   </tr>
                 ) : (
                   paginatedResponses.map((response) => (
-                    <tr key={response.id || response._id} className="hover:bg-zinc-900">
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-zinc-400">{formatDate(response.submittedAt)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-zinc-200">{response.respondentEmail || 'Anonymous'}</td>
+                    <tr
+                      key={response.id || response._id}
+                      className="transition-geist duration-150 hover:bg-accent-1"
+                    >
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-accent-5">
+                        {formatDate(response.submittedAt)}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-foreground">
+                        {response.respondentEmail || "Anonymous"}
+                      </td>
                       {questions.map((q: Question) => {
-                        const answerObj = response.answers?.find((a: Answer) => a.questionId === q.id);
-                        const val = answerObj ? answerObj.value : '-';
+                        const answerObj = response.answers?.find(
+                          (a: Answer) => a.questionId === q.id,
+                        );
+                        const val = answerObj ? answerObj.value : "-";
                         const display = Array.isArray(val)
-                          ? val.join(', ')
+                          ? val.join(", ")
                           : val instanceof File
                             ? val.name
-                            : String(val ?? '-');
+                            : String(val ?? "-");
                         return (
-                          <td key={q.id} className="px-4 py-3 text-sm text-zinc-300">
+                          <td
+                            key={q.id}
+                            className="px-4 py-3 text-sm text-accent-6"
+                          >
                             <span className="line-clamp-2">{display}</span>
                           </td>
                         );
@@ -326,21 +337,23 @@ export const FormResponses = () => {
           </div>
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-zinc-800 px-4 py-3">
+            <div className="flex items-center justify-between border-t border-border px-4 py-3">
               <button
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="rounded-md border border-zinc-700 bg-zinc-950 p-2 text-zinc-400 hover:text-zinc-200 disabled:opacity-40"
+                className="rounded-sm border border-border bg-background p-2 text-accent-5 transition-geist duration-150 hover:text-foreground disabled:opacity-40"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <span className="text-xs text-zinc-500">
+              <span className="text-xs text-accent-5">
                 Page {currentPage} of {totalPages}
               </span>
               <button
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
                 disabled={currentPage === totalPages}
-                className="rounded-md border border-zinc-700 bg-zinc-950 p-2 text-zinc-400 hover:text-zinc-200 disabled:opacity-40"
+                className="rounded-sm border border-border bg-background p-2 text-accent-5 transition-geist duration-150 hover:text-foreground disabled:opacity-40"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>

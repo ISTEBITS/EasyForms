@@ -15,6 +15,24 @@ export interface QuestionOption {
   id: string;
   label: string;
   value: string;
+  gotoQuestionId?: string;
+}
+
+export type ConditionOperator =
+  | "equals"
+  | "not_equals"
+  | "contains"
+  | "greater_than"
+  | "less_than"
+  | "is_filled"
+  | "is_empty";
+
+export interface QuestionCondition {
+  id: string;
+  fieldId: string;
+  operator: ConditionOperator;
+  value?: string;
+  action: "show" | "hide";
 }
 
 export interface Question {
@@ -25,6 +43,8 @@ export interface Question {
   required: boolean;
   options?: QuestionOption[];
   placeholder?: string;
+  conditions?: QuestionCondition[];
+  logicOperator?: "AND" | "OR";
   maxLength?: number;
   minRating?: number;
   maxRating?: number;

@@ -42,19 +42,21 @@ export const MobileActionBar = ({
   return (
     <div className="lg:hidden grid grid-cols-2 gap-3 mb-2 sticky top-0 z-20 pb-2">
       <Sheet open={showMobileAdd} onOpenChange={setShowMobileAdd}>
-        <SheetTrigger asChild>
-          <Button className="w-full bg-zinc-100 text-gray-900 hover:bg-zinc-200 shadow-lg shadow-indigo-500/20">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Question
-          </Button>
-        </SheetTrigger>
+        <SheetTrigger
+          render={
+            <Button variant="default" className="w-full rounded-sm">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Question
+            </Button>
+          }
+        />
         <SheetContent
           side="bottom"
-          className="h-[70vh] bg-zinc-950 border-white/10 p-0 rounded-t-2xl flex flex-col"
+          className="h-[70vh] max-h-[80vh] bg-background border-border p-0 rounded-t-sm flex flex-col"
         >
           <div className="p-3 flex flex-col h-full">
             <SheetHeader className="mb-4 text-left">
-              <SheetTitle className="text-white">
+              <SheetTitle className="text-foreground">
                 Select Question Type
               </SheetTitle>
             </SheetHeader>
@@ -74,23 +76,21 @@ export const MobileActionBar = ({
       </Sheet>
 
       <Sheet open={showMobileSettings} onOpenChange={setShowMobileSettings}>
-        <SheetTrigger asChild>
-          <Button
-            variant="outline"
-            className="w-full bg-zinc-900 border-white/10 text-white hover:bg-zinc-800"
-          >
-            <Settings className="w-4 h-4 mr-2" />
-            Settings
-          </Button>
-        </SheetTrigger>
+        <SheetTrigger
+          render={
+            <Button variant="secondary" className="w-full rounded-sm">
+              <Settings className="w-4 h-4 mr-2" />
+              Settings
+            </Button>
+          }
+        />
         <SheetContent
           side="right"
-          onOpenAutoFocus={(event) => event.preventDefault()}
-          className="w-[70%] px-5 pb-5 sm:w-[400px] bg-zinc-950 border-white/10"
+          className="w-[70%] px-5 pb-5 sm:w-[400px] bg-background border-border"
         >
           <SheetHeader>
-            <SheetTitle className="text-white flex items-center gap-2">
-              <Settings className="w-5 h-5 text-indigo-400" />
+            <SheetTitle className="text-foreground flex items-center gap-2">
+              <Settings className="w-5 h-5 text-accent-7" />
               Form Settings
             </SheetTitle>
           </SheetHeader>

@@ -1,4 +1,4 @@
-import { useLocation,useNavigate,Route,Routes,Navigate } from "react-router-dom";
+import { useLocation, useNavigate, Route, Routes, Navigate } from "react-router-dom";
 import { LoginPage } from "@/pages/LoginPage";
 import { PublicForm } from "@/pages/PublicForm";
 import { Dashboard } from "@/pages/Dashboard";
@@ -9,6 +9,8 @@ import { FormResponses } from "@/pages/FormResponses";
 import EditorWrapper from "./EditorWrapper";
 import ProtectedAppShell from "./ProtectedAppShell";
 import { EditorFormsPage, ResponsesFormsPage } from "@/pages/FormCollections";
+import { ApiKeysPage } from "@/pages/ApiKeysPage";
+import { ActivityPage } from "@/pages/ActivityPage";
 
 export default function AppRoutes() {
   const location = useLocation();
@@ -16,60 +18,50 @@ export default function AppRoutes() {
 
   return (
     <Routes location={location} key={location.pathname}>
-        
-        {/* === PUBLIC ROUTES === */}
+      {/* === PUBLIC ROUTES === */}
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/test-signup" element={<TestUserSignupPage />} />
+      <Route path="/form/:formId" element={<PublicForm />} />
+      <Route path="/form" element={<PublicForm />} />
 
-        {/* 0. Landing Page */}
-        <Route path="/" element={<LandingPage />} />
-        
-        {/* 1. Login Page */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/test-signup" element={<TestUserSignupPage />} />
+      {/* === PROTECTED ROUTES === */}
+      <Route element={<ProtectedRoute />}>
+        <Route element={<ProtectedAppShell />}>
+          <Route
+            path="/dashboard"
+            element={
+              <Dashboard
+                onEditForm={(form) =>
+                  navigate(`/editor/${form.id || form._id}${location.search || ""}`, {
+                    state: { form },
+                  })
+                }
+              />
+            }
+          />
 
-        {/* 2. Public Form View (Must be public so respondents can access) */}
-        <Route path="/form/:formId" element={<PublicForm />} />
+          <Route path="/editor" element={<EditorFormsPage />} />
 
-        <Route path="/form" element={<PublicForm />} />
+          <Route
+            path="/editor/:formId"
+            element={
+              <EditorWrapper onBack={() => navigate(`/editor${location.search || ""}`)} />
+            }
+          />
 
-        {/* === PROTECTED ROUTES === */}
-        {/* All routes inside this wrapper require authentication */}
-        <Route element={<ProtectedRoute />}>
-          <Route element={<ProtectedAppShell />}>
-            <Route
-              path="/dashboard"
-              element={
-                <Dashboard
-                  onEditForm={(form) =>
-                    navigate(`/editor/${form.id}${location.search || ""}`, { state: { form } })
-                  }
-                />
-              }
-            />
+          <Route path="/responses" element={<ResponsesFormsPage />} />
 
-            <Route
-              path="/editor"
-              element={<EditorFormsPage />}
-            />
+          <Route path="/form/:id/responses" element={<FormResponses />} />
 
-            <Route
-              path="/editor/:formId"
-              element={
-                <EditorWrapper onBack={() => navigate(`/editor${location.search || ""}`)} />
-              }
-            />
+          <Route path="/api-keys" element={<ApiKeysPage />} />
 
-            <Route path="/responses" element={<ResponsesFormsPage />} />
-
-            <Route 
-              path="/form/:id/responses" 
-              element={<FormResponses />} 
-            />
-          </Route>
-           
-           {/* Fallback: Send to dashboard (which will redirect to login if needed) */}
-           <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/activity" element={<ActivityPage />} />
         </Route>
 
-      </Routes>
+        {/* Fallback: Send to dashboard */}
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Route>
+    </Routes>
   );
 }

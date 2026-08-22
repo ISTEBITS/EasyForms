@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,16 +33,15 @@ import {
   filterFormsByDashboardScope,
   normalizeDashboardScope,
 } from "@/lib/dashboard-scope";
+import { DashboardSkeleton } from "@/components/ui/skeleton-new";
 
 interface DashboardProps {
   onEditForm: (form: Form) => void;
 }
 
-export  function Dashboard({ onEditForm }: DashboardProps) {
+export function Dashboard({ onEditForm }: DashboardProps) {
   const { forms, loading, createForm, deleteForm } = useForms();
   const { user } = useAuth();
-  const activeTab = "forms";
-  const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [formToDelete, setFormToDelete] = useState<string | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
@@ -102,7 +101,8 @@ export  function Dashboard({ onEditForm }: DashboardProps) {
     ];
   }, [activities, forms, isAdmin, selectedDashboard]);
 
-  const setSelectedDashboard = (nextScope: string) => {
+  const setSelectedDashboard = (nextScope: string | null) => {
+    if (!nextScope) return;
     const normalizedScope = normalizeDashboardScope(nextScope);
     const nextSearch = new URLSearchParams(searchParams);
     if (normalizedScope === ADMIN_DASHBOARD_SCOPE || !isAdmin) {
@@ -125,9 +125,7 @@ export  function Dashboard({ onEditForm }: DashboardProps) {
     return filterFormsByDashboardScope(forms, isAdmin, selectedDashboard);
   }, [forms, isAdmin, selectedDashboard]);
 
-  const filteredForms = scopedForms.filter((form) =>
-    form.title.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  const filteredForms = scopedForms;
 
   const isViewingTestUserDashboard =
     isAdmin && selectedDashboard.startsWith("test:");
@@ -261,7 +259,10 @@ export  function Dashboard({ onEditForm }: DashboardProps) {
     };
 
     const template = templates[templateName];
-    if (isTestUser && template?.questions?.some((question) => question.type === "file_upload")) {
+    if (
+      isTestUser &&
+      template?.questions?.some((question) => question.type === "file_upload")
+    ) {
       toast.error("Test users cannot use templates with file upload fields");
       return;
     }
@@ -301,43 +302,38 @@ export  function Dashboard({ onEditForm }: DashboardProps) {
   };
 
   if (loading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center bg-[#0a0a0a]">
-        <div className="flex items-center gap-2 text-sm text-zinc-400">
-          <Loader className="h-4 w-4 animate-spin" />
-          Loading dashboard
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (
-    <div className="bg-[#0a0a0a] text-zinc-100">
+    <div className="space-y-6 p-4 animate-in fade-in-50 duration-200">
       <DashboardHeader
-        searchQuery={searchQuery}
-        onSearchQueryChange={setSearchQuery}
         showTemplates={showTemplates}
         onShowTemplatesChange={setShowTemplates}
         onCreateBlankForm={handleCreateForm}
         onCreateFromTemplate={handleCreateFromTemplate}
         disableCreate={disableCreate}
       />
+
       {isAdmin && (
-        <div className="mb-4 rounded-lg border border-zinc-800 bg-zinc-900/40 px-4 py-3">
+        <div className="rounded-sm border border-border bg-background px-4 py-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs uppercase tracking-wide text-zinc-500">
-              Dashboard view
-            </p>
+            <div className="flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+              <p className="font-mono text-[10px] uppercase font-semibold tracking-wider text-accent-5">
+                Workspace Scope View
+              </p>
+            </div>
             <Select
               value={selectedDashboard}
               onValueChange={setSelectedDashboard}
             >
-              <SelectTrigger className="h-9 w-full border-zinc-700 bg-zinc-950 text-zinc-100 sm:w-[320px]">
+              <SelectTrigger className="h-8 w-full border-border bg-accent-1 text-xs text-foreground sm:w-[280px]">
                 <SelectValue placeholder="Select dashboard scope" />
               </SelectTrigger>
-              <SelectContent className="border-zinc-700 bg-zinc-950 text-zinc-100">
+              <SelectContent className="border-border bg-background text-foreground">
                 {dashboardOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
+                  <SelectItem key={option.value} value={option.value} className="text-xs font-sans">
                     {option.label}
                   </SelectItem>
                 ))}
@@ -345,8 +341,9 @@ export  function Dashboard({ onEditForm }: DashboardProps) {
             </Select>
           </div>
           {isViewingTestUserDashboard && selectedDashboardLabel && (
-            <p className="mt-2 text-xs text-zinc-500">
-              Viewing test user dashboard for {selectedDashboardLabel}
+            <p className="mt-2 text-xs text-accent-5 font-sans">
+              Viewing test user dashboard scope for{" "}
+              <span className="text-foreground font-medium">{selectedDashboardLabel}</span>
             </p>
           )}
         </div>
@@ -355,20 +352,21 @@ export  function Dashboard({ onEditForm }: DashboardProps) {
       <DashboardWorkspace
         forms={scopedForms}
         filteredForms={filteredForms}
-        activeTab={activeTab}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         onCreateClick={() => setShowTemplates(true)}
         onEditForm={onEditForm}
         onViewResponses={(form) => {
-          navigate(`/form/${form.id || form._id}/responses${dashboardScopeSearch}`);
+          navigate(
+            `/form/${form.id || form._id}/responses${dashboardScopeSearch}`,
+          );
         }}
         onDeleteForm={(formId) => setFormToDelete(formId)}
         onShareForm={async (form) => {
           const link = `${window.location.origin}/form/${form.id || form._id}`;
           try {
             await navigator.clipboard.writeText(link);
-            toast.success("Public form link copied");
+            toast.success("Public form link copied to clipboard");
           } catch {
             toast.error("Unable to copy form link");
           }
@@ -379,15 +377,15 @@ export  function Dashboard({ onEditForm }: DashboardProps) {
           isViewingTestUserDashboard
             ? "Test User Dashboard"
             : isAdmin
-            ? "Admin Dashboard"
-            : "Test User Dashboard"
+              ? "Admin Dashboard"
+              : "Test User Dashboard"
         }
         dashboardDescription={
           isViewingTestUserDashboard
             ? "Review this test user's forms and response activity."
             : isAdmin
-            ? "Manage admin forms and monitor test user activity."
-            : "Manage your test user form with restricted features."
+              ? "Manage all workspace forms, analyze response depth, and monitor team activity."
+              : "Manage your forms with test user privileges."
         }
       />
 
@@ -395,26 +393,26 @@ export  function Dashboard({ onEditForm }: DashboardProps) {
         open={!!formToDelete}
         onOpenChange={() => setFormToDelete(null)}
       >
-        <AlertDialogContent className="max-w-sm rounded-lg border-zinc-700 bg-[#111111] text-zinc-100">
+        <AlertDialogContent className="max-w-sm rounded-md border-zinc-800 bg-zinc-950 text-white">
           <AlertDialogHeader>
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-red-800 bg-red-950/40">
-              <Trash2 className="h-6 w-6 text-red-400" />
+            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-md border border-red-900/50 bg-red-950/40 text-red-400">
+              <Trash2 className="h-5 w-5" />
             </div>
-            <AlertDialogTitle className="text-xl font-semibold text-zinc-100">
+            <AlertDialogTitle className="text-base font-bold text-white">
               Delete Form
             </AlertDialogTitle>
-            <AlertDialogDescription className="leading-relaxed text-zinc-400">
+            <AlertDialogDescription className="text-xs text-zinc-400 leading-relaxed">
               Are you sure you want to delete this form? This action cannot be
-              undone and all responses will be permanently lost.
+              undone and all stored responses will be permanently removed.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-6 gap-3">
-            <AlertDialogCancel className="rounded-md border-zinc-700 bg-zinc-900 px-6 text-zinc-200 hover:bg-zinc-800 hover:text-zinc-100">
+          <AlertDialogFooter className="mt-4 gap-2">
+            <AlertDialogCancel className="h-8 rounded-md border-zinc-800 bg-zinc-900 text-xs text-white hover:bg-zinc-800">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="rounded-md border-0 bg-red-600 px-6 text-white hover:bg-red-700"
+              className="h-8 rounded-md border-0 bg-red-600 text-xs font-semibold text-white hover:bg-red-500"
             >
               Delete Form
             </AlertDialogAction>

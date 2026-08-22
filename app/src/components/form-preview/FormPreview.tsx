@@ -179,7 +179,7 @@ export function FormPreview({
     <div className={previewShellClass}>
       <form onSubmit={handleSubmit} className="relative space-y-6">
         {(form.isTestUserForm || form.owner?.role === "test_user") && (
-          <div className="pointer-events-none absolute right-3 top-3 z-30 rounded border border-amber-800/60 bg-amber-950/60 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-300">
+          <div className="pointer-events-none absolute right-3 top-3 z-30 rounded-sm border border-border bg-accent-1 px-2.5 py-1 text-xs font-mono font-semibold uppercase tracking-wider text-accent-5">
             POWERED BY EASYFORMS
           </div>
         )}
@@ -196,14 +196,14 @@ export function FormPreview({
         />
 
         {form.settings.showProgressBar && answerableQuestions.length > 0 && (
-          <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4">
-            <div className="mb-2 flex items-center justify-between text-xs text-zinc-400">
+          <div className="rounded-sm border border-border bg-accent-1/60 p-4">
+            <div className="mb-2 flex items-center justify-between text-xs text-accent-5">
               <span>Completion</span>
               <span>{Math.round(progress)}%</span>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-zinc-900">
+            <div className="h-2 overflow-hidden rounded-full bg-accent-2">
               <div
-                className="h-full rounded-full bg-zinc-200"
+                className="h-full rounded-full bg-foreground transition-all duration-300"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -218,23 +218,23 @@ export function FormPreview({
         )}
 
         {googleToken && (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-900/50 bg-emerald-950/20 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-border bg-accent-1 p-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full border border-emerald-700 bg-emerald-900/40">
-                <Shield className="h-4 w-4 text-emerald-300" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-sm border border-border bg-accent-1">
+                <Shield className="h-4 w-4 text-accent-7" />
               </div>
               <div>
-                <p className="text-sm font-medium text-zinc-100">
+                <p className="text-sm font-medium text-foreground">
                   Identity Verified
                 </p>
-                <p className="text-xs text-zinc-400">{displayEmail}</p>
+                <p className="text-xs text-accent-5">{displayEmail}</p>
               </div>
             </div>
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               onClick={handleSwitchAccount}
-              className="h-8 border-zinc-700 bg-zinc-900/60 text-zinc-100 hover:bg-zinc-800"
+              size="sm"
             >
               Switch Account
             </Button>
@@ -242,14 +242,14 @@ export function FormPreview({
         )}
 
         {(activePage.title || activePage.description) && (
-          <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4">
+          <div className="rounded-sm border border-border bg-accent-1/60 p-4">
             {activePage.title && (
-              <h3 className="text-base font-semibold text-zinc-100">
+              <h3 className="text-base font-semibold text-foreground">
                 {activePage.title}
               </h3>
             )}
             {activePage.description && (
-              <p className="mt-1 text-sm text-zinc-400">
+              <p className="mt-1 text-sm text-accent-5">
                 {activePage.description}
               </p>
             )}
@@ -262,6 +262,7 @@ export function FormPreview({
               key={question.id}
               question={question}
               value={answers[question.id]}
+              answers={answers}
               onChange={(value) => handleAnswerChange(question.id, value)}
               index={index + 1}
               previewDevice={previewDevice}
@@ -277,12 +278,11 @@ export function FormPreview({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               onClick={() =>
                 setActivePageIndex((prev) => Math.max(prev - 1, 0))
               }
               disabled={activePageIndex === 0 || isSubmitting}
-              className="h-10 border-white/15 bg-zinc-900/70 text-zinc-100 hover:bg-zinc-800"
             >
               <ChevronLeft className="mr-2 h-4 w-4" />
               Back
@@ -293,7 +293,7 @@ export function FormPreview({
                 type="button"
                 onClick={handleNextPage}
                 disabled={isUploading || isSubmitting}
-                className="h-10 bg-zinc-100 text-zinc-950 hover:bg-zinc-200"
+                variant="default"
               >
                 Next Section
                 <ChevronRight className="ml-2 h-4 w-4" />
@@ -306,7 +306,7 @@ export function FormPreview({
                   isUploading ||
                   isSubmitting
                 }
-                className="h-10 bg-zinc-100 text-zinc-950 hover:bg-zinc-200"
+                variant="default"
               >
                 {isSubmitting ? (
                   <span className="inline-flex items-center gap-2">

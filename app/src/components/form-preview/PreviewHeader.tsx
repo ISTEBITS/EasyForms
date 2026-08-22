@@ -27,16 +27,17 @@ export function PreviewHeader({
   headerPaddingClass,
 }: PreviewHeaderProps) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/30">
+    <div className="overflow-hidden rounded-sm border border-border bg-background">
       {bannerImageUrl && (
         <div className={bannerHeightClass}>
           <img
             src={bannerImageUrl}
             alt="Form banner"
             className="h-full w-full object-cover"
-            style={{ objectPosition: `${bannerPositionX}% ${bannerPositionY}%` }}
+            style={{
+              objectPosition: `${bannerPositionX}% ${bannerPositionY}%`,
+            }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#060b14] via-[#060b14]/30 to-transparent" />
         </div>
       )}
       <div className={headerPaddingClass}>
@@ -46,17 +47,18 @@ export function PreviewHeader({
               <img
                 src={form.settings.theme.logoUrl}
                 alt="Brand logo"
-                className="h-10 w-10 rounded-full object-cover ring-1 ring-zinc-700"
+                className="h-10 w-10 rounded-sm object-cover ring-1 ring-border"
               />
             )}
             <div>
-              {(form.settings.theme.brandName || form.settings.theme.brandTagline) && (
+              {(form.settings.theme.brandName ||
+                form.settings.theme.brandTagline) && (
                 <>
-                  <p className="text-xs uppercase tracking-[0.2em] text-zinc-300">
+                  <p className="text-xs uppercase tracking-[0.2em] text-accent-6">
                     {form.settings.theme.brandName || "Brand"}
                   </p>
                   {form.settings.theme.brandTagline && (
-                    <p className="text-xs text-zinc-400">
+                    <p className="text-xs text-accent-5">
                       {form.settings.theme.brandTagline}
                     </p>
                   )}
@@ -64,7 +66,7 @@ export function PreviewHeader({
               )}
             </div>
           </div>
-          <div className="rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs text-zinc-300">
+          <div className="rounded-sm border border-border bg-accent-1 px-3 py-1 text-xs text-accent-6">
             Page {activePageIndex + 1} of {Math.max(pages.length, 1)}
           </div>
         </div>
@@ -74,21 +76,21 @@ export function PreviewHeader({
               {pages.map((page, index) => (
                 <div key={page.id} className="flex items-center gap-2">
                   <div
-                    className={`group relative flex min-w-[140px] items-center gap-2 rounded-xl border px-3 py-2 text-left transition-all ${
+                    className={`group relative flex min-w-[140px] items-center gap-2 rounded-sm border px-3 py-2 text-left transition-geist duration-150 ${
                       index === activePageIndex
-                        ? "border-zinc-300/40 bg-gradient-to-br from-zinc-100/10 to-zinc-600/10 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]"
+                        ? "border-accent-8 bg-accent-2"
                         : index < activePageIndex
-                          ? "border-emerald-700/40 bg-emerald-950/20"
-                          : "border-zinc-800 bg-zinc-900/40"
+                          ? "border-accent-2 bg-accent-1"
+                          : "border-border bg-accent-1/40"
                     }`}
                   >
                     <div
-                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-[11px] font-semibold ${
                         index === activePageIndex
-                          ? "bg-zinc-100 text-zinc-900"
+                          ? "bg-foreground text-background"
                           : index < activePageIndex
-                            ? "bg-emerald-400/20 text-emerald-300 ring-1 ring-emerald-400/40"
-                            : "bg-zinc-800 text-zinc-400"
+                            ? "bg-accent-3 text-accent-7"
+                            : "bg-accent-2 text-accent-4"
                       }`}
                     >
                       {index + 1}
@@ -97,10 +99,10 @@ export function PreviewHeader({
                       <p
                         className={`truncate text-[10px] uppercase tracking-[0.14em] ${
                           index === activePageIndex
-                            ? "text-zinc-300"
+                            ? "text-accent-7"
                             : index < activePageIndex
-                              ? "text-emerald-300/80"
-                              : "text-zinc-500"
+                              ? "text-accent-5"
+                              : "text-accent-4"
                         }`}
                       >
                         Step {index + 1}
@@ -108,10 +110,10 @@ export function PreviewHeader({
                       <p
                         className={`truncate text-xs ${
                           index === activePageIndex
-                            ? "text-zinc-100"
+                            ? "text-foreground"
                             : index < activePageIndex
-                              ? "text-emerald-200"
-                              : "text-zinc-400"
+                              ? "text-accent-6"
+                              : "text-accent-5"
                         }`}
                       >
                         {page.title || "Untitled section"}
@@ -119,7 +121,7 @@ export function PreviewHeader({
                     </div>
                   </div>
                   {index < pages.length - 1 && (
-                    <div className="h-px w-5 shrink-0 bg-zinc-700/70" />
+                    <div className="h-px w-5 shrink-0 bg-border" />
                   )}
                 </div>
               ))}
@@ -127,7 +129,7 @@ export function PreviewHeader({
           </div>
         )}
         <div
-          className="space-y-3 leading-relaxed text-zinc-200"
+          className="space-y-3 leading-relaxed text-foreground"
           dangerouslySetInnerHTML={{
             __html: renderMarkdownPreview(
               formHeaderMarkdownSource(

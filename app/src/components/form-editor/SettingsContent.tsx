@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useRef } from "react";
 import {
   Eye,
   Copy,
@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import type { Form } from "@/types/form";
-import { renderMarkdownPreview } from "@/lib/form-header-markdown";
+import { MarkdownEditor } from "./MarkdownEditor";
 
 interface SettingsContentProps {
   form: Form;
@@ -89,9 +89,6 @@ export const SettingsContent = ({
 }: SettingsContentProps) => {
   const logoInputRef = useRef<HTMLInputElement | null>(null);
   const backgroundInputRef = useRef<HTMLInputElement | null>(null);
-  const [emailEditorView, setEmailEditorView] = useState<"write" | "preview">(
-    "write",
-  );
   const bannerImageUrl =
     form.settings.theme.bannerUrl || form.settings.theme.backgroundImageUrl;
   const bannerPositionX =
@@ -113,46 +110,17 @@ export const SettingsContent = ({
   const deadlineTimeValue = toLocalTimeInputValue(responseDeadlineAt);
   const hasResponseDeadline = Boolean(responseDeadlineAt);
   const maxResponsesValue =
-    typeof form.settings.maxResponses === "number" && form.settings.maxResponses > 0
+    typeof form.settings.maxResponses === "number" &&
+    form.settings.maxResponses > 0
       ? form.settings.maxResponses
       : null;
   const hasMaxResponsesLimit = maxResponsesValue !== null;
-
-  const sampleEmailValues = useMemo(
-    () => ({
-      name: "Alex Johnson",
-      email: "alex.johnson@example.com",
-      formTitle: form.title || "Untitled Form",
-      submittedAt: new Date().toLocaleString(),
-    }),
-    [form.title],
-  );
-
-  const applyTokens = (value: string) =>
-    value
-      .replaceAll("{{name}}", sampleEmailValues.name)
-      .replaceAll("{{email}}", sampleEmailValues.email)
-      .replaceAll("{{formTitle}}", sampleEmailValues.formTitle)
-      .replaceAll("{{submittedAt}}", sampleEmailValues.submittedAt);
-
-  const emailMarkdownPreview = renderMarkdownPreview(
-    applyTokens(emailNotification.message || ""),
-  );
 
   const insertTokenToSubject = (token: string) => {
     onUpdateSettings({
       emailNotification: {
         ...emailNotification,
         subject: `${emailNotification.subject || ""}${token}`,
-      },
-    });
-  };
-
-  const insertTokenToMessage = (token: string) => {
-    onUpdateSettings({
-      emailNotification: {
-        ...emailNotification,
-        message: `${emailNotification.message || ""}${token}`,
       },
     });
   };
@@ -180,16 +148,19 @@ export const SettingsContent = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-2">
       <div className="space-y-4">
-        <div className="rounded-xl border border-white/10 bg-zinc-900 p-3">
+        {/* Public Slug */}
+        <div className="rounded-sm border border-border bg-accent-1 p-3">
           <div className="mb-3 flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/20 px-2">
-              <Link2 className="h-4 w-4 text-cyan-300" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-sm border border-border bg-accent-1">
+              <Link2 className="h-4 w-4 text-accent-7" />
             </div>
             <div>
-              <Label className="text-sm font-medium text-white">Public Slug</Label>
-              <p className="text-xs text-zinc-500">
+              <Label className="text-sm font-medium text-foreground">
+                Public Slug
+              </Label>
+              <p className="text-xs text-accent-5">
                 Custom URL segment for your published form
               </p>
             </div>
@@ -199,22 +170,25 @@ export const SettingsContent = ({
             onChange={(e) => onSlugChange(e.target.value)}
             onBlur={onSlugBlur}
             placeholder="custom-url-slug (optional)"
-            className="h-9 border-white/10 bg-zinc-950 text-zinc-100 font-mono text-sm"
+            className="h-9 border-border bg-background text-foreground font-sans text-sm"
           />
-          <p className="mt-2 text-xs text-zinc-500">
+          <p className="mt-2 text-xs text-accent-5">
             Allowed: letters, numbers, and hyphens. Duplicate slugs are
             auto-adjusted.
           </p>
         </div>
 
-        <div className="rounded-xl border border-white/10 bg-zinc-900 p-3">
+        {/* Branding */}
+        <div className="rounded-sm border border-border bg-accent-1 p-3">
           <div className="mb-3 flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/20 px-2">
-              <Building2 className="h-4 w-4 text-indigo-300" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-sm border border-border bg-accent-1">
+              <Building2 className="h-4 w-4 text-accent-7" />
             </div>
             <div>
-              <Label className="text-sm font-medium text-white">Branding</Label>
-              <p className="text-xs text-zinc-500">
+              <Label className="text-sm font-medium text-foreground">
+                Branding
+              </Label>
+              <p className="text-xs text-accent-5">
                 Logo, hero background, and labels
               </p>
             </div>
@@ -231,7 +205,7 @@ export const SettingsContent = ({
                 })
               }
               placeholder="Brand name (optional)"
-              className="text-sm md:text-md h-9 border-white/10 bg-zinc-950 text-zinc-100"
+              className="h-9 border-border bg-background text-foreground text-sm"
             />
             <Input
               value={form.settings.theme.brandTagline || ""}
@@ -244,14 +218,14 @@ export const SettingsContent = ({
                 })
               }
               placeholder="Brand tagline (optional)"
-              className="text-sm  md:text-md h-9 border-white/10 bg-zinc-950 text-zinc-100"
+              className="h-9 border-border bg-background text-foreground text-sm"
             />
             <div className="grid grid-cols-1 gap-2">
               <button
                 type="button"
                 onClick={() => logoInputRef.current?.click()}
                 disabled={isThemeAssetUploading || isTestUser}
-                className="text-xs inline-flex h-9 items-center justify-center gap-2 rounded-md border border-white/15 bg-zinc-950 px-3 md:text-sm text-zinc-200 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-sm border border-border bg-background px-3 text-xs text-foreground transition-geist duration-150 hover:bg-accent-1 disabled:cursor-not-allowed disabled:opacity-60 md:text-sm"
               >
                 <Sparkles className="h-4 w-4" />
                 {form.settings.theme.logoUrl ? "Replace Logo" : "Upload Logo"}
@@ -260,7 +234,7 @@ export const SettingsContent = ({
                 type="button"
                 onClick={() => backgroundInputRef.current?.click()}
                 disabled={isThemeAssetUploading || isTestUser}
-                className="text-xs inline-flex h-9 items-center justify-center gap-2 rounded-md border border-white/15 bg-zinc-950 px-3 md:text-sm text-zinc-200 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-sm border border-border bg-background px-3 text-xs text-foreground transition-geist duration-150 hover:bg-accent-1 disabled:cursor-not-allowed disabled:opacity-60 md:text-sm"
               >
                 <Image className="h-4 w-4" />
                 {form.settings.theme.bannerUrl ||
@@ -269,18 +243,18 @@ export const SettingsContent = ({
                   : "Upload Banner Image"}
               </button>
             </div>
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-accent-5">
               {isTestUser
                 ? "Branding assets are fixed for test users."
                 : "Banner image appears at the top of the public form."}
             </p>
             {bannerImageUrl && (
-              <div className="space-y-3 rounded-lg border border-white/10 bg-zinc-950/70 p-3">
+              <div className="space-y-3 rounded-sm border border-border bg-background p-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium text-zinc-300">
+                  <Label className="text-xs font-medium text-foreground">
                     Horizontal Position
                   </Label>
-                  <span className="text-xs text-zinc-500">
+                  <span className="text-xs text-accent-5">
                     {bannerPositionX}%
                   </span>
                 </div>
@@ -298,14 +272,14 @@ export const SettingsContent = ({
                       },
                     })
                   }
-                  className="w-full accent-indigo-400"
+                  className="w-full accent-foreground"
                 />
 
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium text-zinc-300">
+                  <Label className="text-xs font-medium text-foreground">
                     Vertical Position
                   </Label>
-                  <span className="text-xs text-zinc-500">
+                  <span className="text-xs text-accent-5">
                     {bannerPositionY}%
                   </span>
                 </div>
@@ -323,7 +297,7 @@ export const SettingsContent = ({
                       },
                     })
                   }
-                  className="w-full accent-indigo-400"
+                  className="w-full accent-foreground"
                 />
 
                 <button
@@ -337,7 +311,7 @@ export const SettingsContent = ({
                       },
                     })
                   }
-                  className="inline-flex h-8 items-center justify-center rounded-md border border-white/15 bg-zinc-900 px-3 text-xs text-zinc-300 hover:bg-zinc-800"
+                  className="inline-flex h-8 items-center justify-center rounded-sm border border-border bg-accent-1 px-3 text-xs text-foreground transition-geist duration-150 hover:bg-accent-2"
                 >
                   Reset Banner Position
                 </button>
@@ -348,13 +322,13 @@ export const SettingsContent = ({
               form.settings.theme.backgroundImageUrl) && (
               <div className="space-y-2">
                 {form.settings.theme.logoUrl && (
-                  <p className="truncate text-xs text-zinc-500">
+                  <p className="truncate text-xs text-accent-5">
                     Logo: {form.settings.theme.logoUrl}
                   </p>
                 )}
                 {(form.settings.theme.bannerUrl ||
                   form.settings.theme.backgroundImageUrl) && (
-                  <p className="truncate text-xs text-zinc-500">
+                  <p className="truncate text-xs text-accent-5">
                     Banner:{" "}
                     {form.settings.theme.bannerUrl ||
                       form.settings.theme.backgroundImageUrl}
@@ -391,19 +365,20 @@ export const SettingsContent = ({
           </div>
         </div>
 
-        <div className="flex items-center justify-between rounded-xl border border-white/10 bg-zinc-900 p-3">
+        {/* Progress Bar */}
+        <div className="flex items-center justify-between rounded-sm border border-border bg-accent-1 p-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/20 px-2">
-              <Eye className="h-4 w-4 text-indigo-400" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-sm border border-border bg-accent-1">
+              <Eye className="h-4 w-4 text-accent-7" />
             </div>
             <div>
               <Label
                 htmlFor="progress-bar"
-                className="cursor-pointer text-sm font-medium text-white"
+                className="cursor-pointer text-sm font-medium text-foreground"
               >
                 Progress Bar
               </Label>
-              <p className="text-xs text-zinc-500">Show completion progress</p>
+              <p className="text-xs text-accent-5">Show completion progress</p>
             </div>
           </div>
           <Switch
@@ -412,23 +387,23 @@ export const SettingsContent = ({
             onCheckedChange={(checked) =>
               onUpdateSettings({ showProgressBar: checked })
             }
-            className="data-[state=checked]:bg-indigo-500"
           />
         </div>
 
-        <div className="flex items-center justify-between rounded-xl border border-white/10 bg-zinc-900 p-3">
+        {/* Multiple Responses */}
+        <div className="flex items-center justify-between rounded-sm border border-border bg-accent-1 p-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center px-2 rounded-lg bg-indigo-500/20">
-              <Copy className="h-4 w-4 text-cyan-400" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-sm border border-border bg-accent-1">
+              <Copy className="h-4 w-4 text-accent-7" />
             </div>
             <div>
               <Label
                 htmlFor="multiple-responses"
-                className="cursor-pointer text-sm font-medium text-white"
+                className="cursor-pointer text-sm font-medium text-foreground"
               >
                 Multiple Responses
               </Label>
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-accent-5">
                 Allow users to submit multiple times
               </p>
             </div>
@@ -439,24 +414,24 @@ export const SettingsContent = ({
             onCheckedChange={(checked) =>
               onUpdateSettings({ allowMultipleResponses: checked })
             }
-            className="data-[state=checked]:bg-cyan-500"
           />
         </div>
 
-        <div className="space-y-3 rounded-xl border border-white/10 bg-zinc-900 p-3">
+        {/* Response Deadline */}
+        <div className="space-y-3 rounded-sm border border-border bg-accent-1 p-3">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/20 px-2">
-                <CalendarClock className="h-[16px] w-[16px] text-amber-300" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-sm border border-border bg-accent-1">
+                <CalendarClock className="h-4 w-4 text-accent-7" />
               </div>
               <div>
                 <Label
                   htmlFor="response-deadline"
-                  className="cursor-pointer text-sm font-medium text-white"
+                  className="cursor-pointer text-sm font-medium text-foreground"
                 >
                   Response Deadline
                 </Label>
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs text-accent-5">
                   Stop submissions automatically at a date and time
                 </p>
               </div>
@@ -477,7 +452,6 @@ export const SettingsContent = ({
                 now.setMinutes(now.getMinutes() + 30);
                 onUpdateSettings({ responseDeadlineAt: now.toISOString() });
               }}
-              className="data-[state=checked]:bg-amber-500"
             />
           </div>
 
@@ -494,7 +468,7 @@ export const SettingsContent = ({
                   if (!nextIso) return;
                   onUpdateSettings({ responseDeadlineAt: nextIso });
                 }}
-                className="h-9 border-white/10 bg-zinc-950 text-zinc-100 [color-scheme:dark]"
+                className="h-9 border-border bg-background text-foreground [color-scheme:dark]"
               />
               <Input
                 type="time"
@@ -508,22 +482,23 @@ export const SettingsContent = ({
                   if (!nextIso) return;
                   onUpdateSettings({ responseDeadlineAt: nextIso });
                 }}
-                className="h-9 border-white/10 bg-zinc-950 text-zinc-100 [color-scheme:dark]"
+                className="h-9 border-border bg-background text-foreground [color-scheme:dark]"
               />
             </div>
           )}
         </div>
 
-        <div className="space-y-3 rounded-xl border border-white/10 bg-zinc-900 p-3">
+        {/* Max Responses */}
+        <div className="space-y-3 rounded-sm border border-border bg-accent-1 p-3">
           <div className="flex items-center justify-between gap-3">
             <div>
               <Label
                 htmlFor="max-responses"
-                className="cursor-pointer text-sm font-medium text-white"
+                className="cursor-pointer text-sm font-medium text-foreground"
               >
                 Max Responses
               </Label>
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-accent-5">
                 Auto-close after reaching a response count
               </p>
             </div>
@@ -535,7 +510,6 @@ export const SettingsContent = ({
                   maxResponses: checked ? maxResponsesValue || 100 : null,
                 })
               }
-              className="data-[state=checked]:bg-amber-500"
             />
           </div>
 
@@ -554,14 +528,15 @@ export const SettingsContent = ({
                 onUpdateSettings({ maxResponses: nextValue });
               }}
               placeholder="Maximum responses"
-              className="h-9 border-white/10 bg-zinc-950 text-zinc-100"
+              className="h-9 border-border bg-background text-foreground"
             />
           )}
         </div>
       </div>
 
+      {/* Confirmation Message */}
       <div className="space-y-3">
-        <Label className="text-sm font-medium text-white">
+        <Label className="text-sm font-medium text-foreground">
           Confirmation Message
         </Label>
         <Textarea
@@ -570,44 +545,46 @@ export const SettingsContent = ({
             onUpdateSettings({ confirmationMessage: e.target.value })
           }
           placeholder="Thank you for your response!"
-          className="text-sm min-h-[100px] resize-none rounded-xl border-white/10 bg-zinc-900 text-white placeholder:text-zinc-600 focus:border-indigo-500/50 focus:ring-indigo-500/20"
+          className="min-h-[100px] resize-none rounded-sm border-border bg-accent-1 text-foreground placeholder:text-accent-4 focus:border-accent-8 focus:ring-0 text-sm"
         />
       </div>
 
+      {/* Form Closed Message */}
       <div className="space-y-3">
-        <Label className="text-sm font-medium text-white">
+        <Label className="text-sm font-medium text-foreground">
           Form Closed Message
         </Label>
         <Textarea
           value={form.settings.closedMessage || ""}
           onChange={(e) => onUpdateSettings({ closedMessage: e.target.value })}
           placeholder="This form is no longer accepting responses."
-          className="text-sm min-h-[100px] resize-none rounded-xl border-white/10 bg-zinc-900 text-white placeholder:text-zinc-600 focus:border-indigo-500/50 focus:ring-indigo-500/20"
+          className="min-h-[100px] resize-none rounded-sm border-border bg-accent-1 text-foreground placeholder:text-accent-4 focus:border-accent-8 focus:ring-0 text-sm"
         />
       </div>
 
-      <div className="space-y-4 rounded-xl border border-white/10 bg-zinc-900 p-3">
+      {/* Email Receipt */}
+      <div className="space-y-4 rounded-sm border border-border bg-accent-1 p-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 px-2">
-              <Mail className="h-4 w-4 text-emerald-300" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-sm border border-border bg-accent-1">
+              <Mail className="h-4 w-4 text-accent-7" />
             </div>
             <div>
               <Label
                 htmlFor="submission-email-receipt"
-                className="cursor-pointer text-sm font-medium text-white"
+                className="cursor-pointer text-sm font-medium text-foreground"
               >
                 Email Receipt
               </Label>
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-accent-5">
                 Send a custom email after successful submission
               </p>
             </div>
           </div>
-            <Switch
-              id="submission-email-receipt"
-              checked={isTestUser ? false : emailNotification.enabled}
-              disabled={isTestUser}
+          <Switch
+            id="submission-email-receipt"
+            checked={isTestUser ? false : emailNotification.enabled}
+            disabled={isTestUser}
             onCheckedChange={(checked) =>
               onUpdateSettings({
                 emailNotification: {
@@ -616,18 +593,17 @@ export const SettingsContent = ({
                 },
               })
             }
-            className="data-[state=checked]:bg-emerald-500"
           />
         </div>
 
         {isTestUser && (
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-accent-5">
             Email receipts are disabled for test users.
           </p>
         )}
 
         {emailNotification.enabled && !isTestUser && (
-          <div className="space-y-3 border-t border-white/10 pt-3">
+          <div className="space-y-3 border-t border-border pt-3">
             <Input
               value={emailNotification.subject}
               onChange={(e) =>
@@ -639,21 +615,21 @@ export const SettingsContent = ({
                 })
               }
               placeholder="Email subject"
-              className="text-xs md:text-md h-9 border-white/10 bg-zinc-950 text-zinc-100"
+              className="h-9 border-border bg-background text-foreground text-xs md:text-md"
             />
 
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => insertTokenToSubject(" {{formTitle}}")}
-                className="rounded-md border border-white/15 bg-zinc-950 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-900"
+                className="rounded-sm border border-border bg-background px-2 py-1 text-xs text-foreground transition-geist duration-150 hover:bg-accent-1"
               >
                 + form title
               </button>
               <button
                 type="button"
                 onClick={() => insertTokenToSubject(" {{submittedAt}}")}
-                className="rounded-md border border-white/15 bg-zinc-950 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-900"
+                className="rounded-sm border border-border bg-background px-2 py-1 text-xs text-foreground transition-geist duration-150 hover:bg-accent-1"
               >
                 + date/time
               </button>
@@ -663,100 +639,41 @@ export const SettingsContent = ({
               <button
                 type="button"
                 onClick={() => applyEmailTemplate("simple")}
-                className="rounded-md border border-white/15 bg-zinc-950 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-900"
+                className="rounded-sm border border-border bg-background px-2 py-1 text-xs text-foreground transition-geist duration-150 hover:bg-accent-1"
               >
                 Use Simple Template
               </button>
               <button
                 type="button"
                 onClick={() => applyEmailTemplate("professional")}
-                className="rounded-md border border-white/15 bg-zinc-950 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-900"
+                className="rounded-sm border border-border bg-background px-2 py-1 text-xs text-foreground transition-geist duration-150 hover:bg-accent-1"
               >
                 Use Professional Template
               </button>
             </div>
 
-            <div className="flex items-center gap-2 rounded-md border border-white/10 bg-zinc-950 p-1">
-              <button
-                type="button"
-                onClick={() => setEmailEditorView("write")}
-                className={`rounded px-2 py-1 text-xs ${
-                  emailEditorView === "write"
-                    ? "bg-zinc-800 text-zinc-100"
-                    : "text-zinc-400 hover:text-zinc-200"
-                }`}
-              >
-                Write
-              </button>
-              <button
-                type="button"
-                onClick={() => setEmailEditorView("preview")}
-                className={`rounded px-2 py-1 text-xs ${
-                  emailEditorView === "preview"
-                    ? "bg-zinc-800 text-zinc-100"
-                    : "text-zinc-400 hover:text-zinc-200"
-                }`}
-              >
-                Preview
-              </button>
+            <div className="space-y-2">
+              <Label className="text-xs font-medium text-accent-5">Email Body Content</Label>
+              <MarkdownEditor
+                value={emailNotification.message || ""}
+                onChange={(message) =>
+                  onUpdateSettings({
+                    emailNotification: {
+                      ...emailNotification,
+                      message,
+                    },
+                  })
+                }
+                placeholder="Write custom email message in Markdown..."
+                minHeight="min-h-[140px]"
+                tokens={[
+                  { label: "Name", token: "{{name}}" },
+                  { label: "Form Title", token: "{{formTitle}}" },
+                  { label: "Date/Time", token: "{{submittedAt}}" },
+                ]}
+              />
             </div>
-
-            {emailEditorView === "write" ? (
-              <>
-                <Textarea
-                  value={emailNotification.message}
-                  onChange={(e) =>
-                    onUpdateSettings({
-                      emailNotification: {
-                        ...emailNotification,
-                        message: e.target.value,
-                      },
-                    })
-                  }
-                  placeholder="Email message"
-                  className="text-xs md:text-md min-h-[120px] resize-none rounded-xl border-white/10 bg-zinc-950 text-white placeholder:text-zinc-600"
-                />
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => insertTokenToMessage("{{name}}")}
-                    className="rounded-md border border-white/15 bg-zinc-950 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-900"
-                  >
-                    + {"{{name}}"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => insertTokenToMessage("{{formTitle}}")}
-                    className="rounded-md border border-white/15 bg-zinc-950 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-900"
-                  >
-                    + {"{{formTitle}}"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => insertTokenToMessage("{{submittedAt}}")}
-                    className="rounded-md border border-white/15 bg-zinc-950 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-900"
-                  >
-                    + {"{{submittedAt}}"}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div className="rounded-xl border border-white/10 bg-zinc-950 p-3">
-                <p className="mb-2 text-xs text-zinc-500">
-                  Preview with sample values
-                </p>
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-zinc-100">
-                    {applyTokens(emailNotification.subject)}
-                  </p>
-                  <div
-                    className="prose prose-invert max-w-none text-sm"
-                    dangerouslySetInnerHTML={{ __html: emailMarkdownPreview }}
-                  />
-                </div>
-              </div>
-            )}
-            <p className="text-xs md:text-md text-zinc-500">
+            <p className="text-xs md:text-md text-accent-5">
               Variables: {"{{name}}"}, {"{{formTitle}}"}, {"{{submittedAt}}"}.
               {" {{email}}"} still works for backward compatibility. Message
               supports markdown (lists, bold, links, headings).

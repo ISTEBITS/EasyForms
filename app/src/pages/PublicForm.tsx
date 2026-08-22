@@ -82,8 +82,8 @@ export function PublicForm() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#060a12] p-4">
-        <div className="rounded-xl border border-white/10 bg-black/30 px-5 py-4 text-sm text-zinc-300">
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="rounded-sm border border-border bg-accent-1 px-5 py-4 text-sm text-accent-5">
           <span className="inline-flex items-center gap-2">
             <Loader className="h-4 w-4 animate-spin" />
             Loading form
@@ -93,26 +93,25 @@ export function PublicForm() {
     );
   }
 
-  // --- Error State ---
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#060a12] p-4">
-        <div className="w-full max-w-md rounded-2xl border border-white/10 bg-black/35 p-8 text-center backdrop-blur">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-zinc-950/80">
-            <AlertCircle className="h-6 w-6 text-zinc-300" />
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="w-full max-w-md rounded-sm border border-border bg-background p-8 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-sm border border-border bg-accent-1">
+            <AlertCircle className="h-6 w-6 text-accent-6" />
           </div>
-          <h2 className="text-xl font-semibold text-zinc-100">{error}</h2>
-          <p className="mt-2 text-sm text-zinc-400">
+          <h2 className="text-xl font-semibold text-foreground">{error}</h2>
+          <p className="mt-2 text-sm text-accent-5">
             Unable to access the requested form. Please verify the URL or
             contact the administrator.
           </p>
           <button
             onClick={() => window.location.reload()}
-            className="mt-6 inline-flex h-10 items-center justify-center rounded-md border border-white/15 bg-zinc-900 px-4 text-sm text-zinc-200 hover:bg-zinc-800"
+            className="mt-6 inline-flex h-10 items-center justify-center rounded-sm border border-border bg-accent-1 px-4 text-sm text-foreground transition-geist duration-150 hover:bg-accent-2"
           >
             Try Again
           </button>
-          <p className="mt-5 text-xs font-mono uppercase text-zinc-600">
+          <p className="mt-5 text-xs font-sans uppercase text-accent-4">
             Ref: {formId ? formId.substring(0, 8).toUpperCase() : "NULL"}
           </p>
         </div>
@@ -123,7 +122,7 @@ export function PublicForm() {
   if (!form) return null;
 
   return (
-    <div className="min-h-screen px-3 py-6 selection:bg-zinc-700 selection:text-zinc-100 sm:px-6 sm:py-8">
+    <div className="min-h-screen px-3 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto w-full max-w-[940px]">
         <div className="relative">
           <FormPreview form={form} onSubmit={handleSubmit} />
