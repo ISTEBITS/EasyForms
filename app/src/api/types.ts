@@ -40,3 +40,29 @@ export interface TestUserActivity {
   metadata?: Record<string, unknown>;
   createdAt: string;
 }
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  keyPrefix: string;
+  scopes: string[];
+  lastUsedAt: string | null;
+  expiresAt: string | null;
+  isExpired?: boolean;
+  createdAt: string;
+}
+
+export interface ApiKeyStats {
+  keyId: string;
+  name: string;
+  keyPrefix: string;
+  scopes: string[];
+  lastUsedAt: string | null;
+  expiresAt: string | null;
+  isExpired?: boolean;
+  createdAt: string;
+  totalRequests: number;
+  failedAttempts: number;
+  requestsByEndpoint: Record<string, number>;
+  requestsByDay: Record<string, number>;
+}

@@ -10,5 +10,7 @@
 # Optional: You can also add general ignore patterns for all node_modules and .env files
 # node_modules
 # .env
-
+.agents
 /app/dist
+/easyforms-sdk/dist
+/easyforms-sdk/node_modules

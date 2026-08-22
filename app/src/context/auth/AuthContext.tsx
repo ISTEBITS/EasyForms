@@ -1,5 +1,6 @@
 import { createContext, useCallback, useEffect, useMemo, useState } from "react";
-import { authApi } from "@/api";
+import { toast } from "sonner";
+import { authApi, ApiError } from "@/api";
 import type { AuthUser } from "@/api";
 import type {
   AuthContextValue,
@@ -19,7 +20,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const nextUser = response.success ? (response.user ?? null) : null;
       setUser(nextUser);
       return Boolean(nextUser);
-    } catch {
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.code === "SESSION_EXPIRED") {
+        toast.error(err.message || "Your session ended because you logged in from another browser or device.");
+      }
       setUser(null);
       return false;
     } finally {

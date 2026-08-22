@@ -1,5 +1,5 @@
-import { Search, Plus } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import type { ComponentType } from "react";
+import { Plus, FileText, Calendar, MessageSquare, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,8 +11,6 @@ import {
 } from "@/components/ui/dialog";
 
 interface DashboardHeaderProps {
-  searchQuery: string;
-  onSearchQueryChange: (value: string) => void;
   showTemplates: boolean;
   onShowTemplatesChange: (open: boolean) => void;
   onCreateBlankForm: () => Promise<void>;
@@ -23,28 +21,26 @@ interface DashboardHeaderProps {
 const templateOptions: Array<{
   name: string;
   description: string;
-  details: string;
+  icon: ComponentType<{ className?: string }>;
 }> = [
   {
     name: "Event Registration",
-    description: "Events, workshops, webinars",
-    details: "Collect attendee and ticket details",
+    description: "Collect attendee and ticket registration details.",
+    icon: Calendar,
   },
   {
     name: "Customer Feedback",
-    description: "NPS and service quality surveys",
-    details: "Measure customer satisfaction quickly",
+    description: "Measure customer satisfaction and rating scores.",
+    icon: MessageSquare,
   },
   {
     name: "Job Application",
-    description: "Collect candidate submissions",
-    details: "Capture profile details and CV upload",
+    description: "Capture candidate details and resume submissions.",
+    icon: Briefcase,
   },
 ];
 
 export function DashboardHeader({
-  searchQuery,
-  onSearchQueryChange,
   showTemplates,
   onShowTemplatesChange,
   onCreateBlankForm,
@@ -52,70 +48,85 @@ export function DashboardHeader({
   disableCreate = false,
 }: DashboardHeaderProps) {
   return (
-    <header className="mb-4 rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-          <Input
-            value={searchQuery}
-            onChange={(e) => onSearchQueryChange(e.target.value)}
-            placeholder="Search forms..."
-            className="h-9 rounded-md border-zinc-700 bg-zinc-950 pl-9 text-zinc-100 placeholder:text-zinc-500"
-          />
-        </div>
+    <header className="mb-6 rounded-sm border border-border bg-background p-4 flex items-center justify-between">
+      <div className="flex items-center gap-2 font-sans">
+        <span className="font-mono text-xs uppercase font-semibold border border-border px-2.5 py-0.5 rounded-full bg-accent-1 text-accent-6">
+          Form Management
+        </span>
+        <span className="text-xs text-accent-5 hidden sm:inline-block">
+          Use <kbd className="font-mono border border-border bg-accent-1 px-1 py-0.5 rounded-xs text-accent-6">⌘K</kbd> for global search
+        </span>
+      </div>
 
-        <Dialog open={showTemplates} onOpenChange={onShowTemplatesChange}>
-          <DialogTrigger asChild>
+      <Dialog open={showTemplates} onOpenChange={onShowTemplatesChange}>
+        <DialogTrigger
+          render={
             <Button
               disabled={disableCreate}
-              className="h-9 rounded-md bg-zinc-100 px-3 text-zinc-900 hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60"
+              variant="primary"
+              size="md"
+              className="gap-2 shrink-0 font-medium"
             >
               <Plus className="h-4 w-4" />
-              New Form
+              <span>Create Form</span>
             </Button>
-          </DialogTrigger>
-          <DialogContent className="border-zinc-700 bg-[#0a0a0a] text-zinc-100 sm:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Create form</DialogTitle>
-              <DialogDescription className="text-zinc-400">
-                Start from scratch or use a ready template.
+          }
+        />
+          <DialogContent className="bg-background text-foreground sm:max-w-xl p-6">
+            <DialogHeader className="mb-4 text-left space-y-1">
+              <DialogTitle className="text-lg font-semibold text-foreground font-sans">Create Form</DialogTitle>
+              <DialogDescription className="text-xs text-accent-5 font-sans">
+                Start with a blank canvas or select a template.
               </DialogDescription>
             </DialogHeader>
+
             <div className="grid gap-3 sm:grid-cols-2">
               <button
+                type="button"
                 onClick={() => {
                   void onCreateBlankForm();
                 }}
-                className="rounded-lg border border-zinc-700 bg-zinc-900 p-4 text-left hover:border-zinc-600"
+                className="group flex flex-col justify-between rounded-sm border border-border bg-background p-4 text-left transition-all hover:border-accent-7"
               >
-                <p className="text-sm font-medium text-zinc-100">Blank Form</p>
-                <p className="mt-1 text-xs text-zinc-500">
-                  Build your own question set.
-                </p>
+                <div className="flex h-9 w-9 items-center justify-center rounded-sm border border-border bg-accent-1 text-foreground mb-3">
+                  <FileText className="h-4 w-4" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground font-sans">Blank Form</h4>
+                  <p className="mt-1 text-xs text-accent-5 font-sans">
+                    Build a custom form from scratch.
+                  </p>
+                </div>
               </button>
-              {templateOptions.map((template) => (
-                <button
-                  key={template.name}
-                  onClick={() => {
-                    void onCreateFromTemplate(template.name);
-                  }}
-                  className="rounded-lg border border-zinc-700 bg-zinc-900 p-4 text-left hover:border-zinc-600"
-                >
-                  <p className="text-sm font-medium text-zinc-100">
-                    {template.name}
-                  </p>
-                  <p className="mt-1 text-xs text-zinc-500">
-                    {template.description}
-                  </p>
-                  <p className="mt-2 text-xs text-zinc-400">
-                    {template.details}
-                  </p>
-                </button>
-              ))}
+
+              {templateOptions.map((template) => {
+                const Icon = template.icon;
+                return (
+                  <button
+                    key={template.name}
+                    type="button"
+                    onClick={() => {
+                      void onCreateFromTemplate(template.name);
+                    }}
+                    className="group flex flex-col justify-between rounded-sm border border-border bg-background p-4 text-left transition-all hover:border-accent-7"
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-sm border border-border bg-accent-1 text-foreground mb-3">
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold text-foreground font-sans">
+                        {template.name}
+                      </h4>
+                      <p className="mt-1 text-xs text-accent-5 font-sans">
+                        {template.description}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </DialogContent>
         </Dialog>
-      </div>
     </header>
   );
 }

@@ -8,7 +8,7 @@ export default function ProtectedRoute() {
   if (isLoading) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-black text-white">
-        <Loader className="h-5 w-5 animate-spin text-zinc-300" />
+        <Loader className="h-5 w-5 animate-spin text-accent-5" />
       </div>
     );
   }

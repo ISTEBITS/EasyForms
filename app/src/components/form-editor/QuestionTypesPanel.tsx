@@ -1,3 +1,4 @@
+import React, { useState } from "react";
 import {
   Type,
   AlignLeft,
@@ -10,9 +11,10 @@ import {
   Hash,
   Upload,
   SeparatorHorizontal,
-  Plus,
-} from 'lucide-react';
-import { QUESTION_TYPE_LABELS, type QuestionType } from '@/types/form';
+  Search,
+} from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { QUESTION_TYPE_LABELS, type QuestionType } from "@/types/form";
 
 const iconMap: Record<QuestionType, React.ElementType> = {
   short_text: Type,
@@ -28,19 +30,18 @@ const iconMap: Record<QuestionType, React.ElementType> = {
   section_break: SeparatorHorizontal,
 };
 
-const typeCategories = [
-  {
-    title: 'Text Input',
-    types: ['short_text', 'long_text', 'email', 'number'] as QuestionType[],
-  },
-  {
-    title: 'Choice',
-    types: ['multiple_choice', 'checkbox', 'dropdown'] as QuestionType[],
-  },
-  {
-    title: 'Special',
-    types: ['rating', 'date', 'file_upload', 'section_break'] as QuestionType[],
-  },
+const allTypes: { type: QuestionType; customLabel?: string }[] = [
+  { type: "section_break", customLabel: "Heading" },
+  { type: "long_text", customLabel: "Paragraph" },
+  { type: "short_text", customLabel: "Text Field" },
+  { type: "number", customLabel: "Number Field" },
+  { type: "date", customLabel: "Date Field" },
+  { type: "email", customLabel: "Email Field" },
+  { type: "checkbox", customLabel: "Checkboxes" },
+  { type: "multiple_choice", customLabel: "Radio Buttons" },
+  { type: "dropdown", customLabel: "Select List" },
+  { type: "file_upload", customLabel: "File Upload" },
+  { type: "rating", customLabel: "Rating" },
 ];
 
 interface QuestionTypesPanelProps {
@@ -54,51 +55,59 @@ export function QuestionTypesPanel({
   disabledTypes = [],
   disabledReason = "Unavailable for your account",
 }: QuestionTypesPanelProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredFields = allTypes.filter(({ type, customLabel }) => {
+    const label = customLabel || QUESTION_TYPE_LABELS[type] || "";
+    return (
+      label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      type.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  });
+
   return (
-    <div className="flex h-full w-full flex-col">
-      <div className="space-y-5">
-        {typeCategories.map((category) => (
-          <div key={category.title} className="space-y-2">
-            <h4 className="px-1 text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-500">
-              {category.title}
-            </h4>
-
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1">
-              {category.types.map((type) => {
-                const Icon = iconMap[type];
-                const isDisabled = disabledTypes.includes(type);
-
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    disabled={isDisabled}
-                    title={isDisabled ? disabledReason : undefined}
-                    onClick={() => onAddQuestion(type)}
-                    className="group flex w-full items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-3 text-left transition hover:border-zinc-700 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-md border border-zinc-700 bg-zinc-950 text-zinc-300">
-                      <Icon className="h-4 w-4" />
-                    </div>
-
-                    <span className="flex-1 truncate text-sm font-medium text-zinc-200">
-                      {QUESTION_TYPE_LABELS[type]}
-                    </span>
-
-                    <span className="flex h-6 w-6 items-center justify-center rounded-md border border-zinc-700 bg-zinc-950 text-zinc-500 opacity-0 transition group-hover:opacity-100">
-                      <Plus className="h-3 w-3" />
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ))}
+    <div className="flex h-full p-2  w-full flex-col space-y-4 text-xs">
+      {/* Search Bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-accent-4" />
+        <Input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search input fields"
+          className="h-8 rounded-xs border-border bg-background pl-8 text-xs placeholder:text-accent-4 focus:border-accent-8"
+        />
       </div>
 
-      <div className="mt-5 rounded-lg border border-zinc-800 bg-zinc-900/50 p-3">
-        <p className="text-xs text-zinc-500">Drag questions in the canvas to reorder them.</p>
+      {/* 2-Column Field Buttons Grid (Matching Reference Screenshot) */}
+      <div className="grid grid-cols-2 gap-2">
+        {filteredFields.map(({ type, customLabel }) => {
+          const Icon = iconMap[type];
+          const isDisabled = disabledTypes.includes(type);
+          const displayLabel = customLabel || QUESTION_TYPE_LABELS[type];
+
+          return (
+            <button
+              key={type}
+              type="button"
+              disabled={isDisabled}
+              title={isDisabled ? disabledReason : undefined}
+              onClick={() => onAddQuestion(type)}
+              className="group flex h-11 items-center justify-center gap-2 rounded-sm border border-border bg-background px-2.5 py-2 text-center transition-geist duration-150 hover:border-accent-8 hover:bg-accent-1/50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Icon className="h-4 w-4 text-accent-6 flex-shrink-0 group-hover:text-foreground" />
+              <span className="truncate font-medium text-xs text-foreground">
+                {displayLabel}
+              </span>
+            </button>
+          );
+        })}
       </div>
+
+      {filteredFields.length === 0 && (
+        <p className="text-center py-6 text-xs text-accent-4">
+          No matching fields found
+        </p>
+      )}
     </div>
   );
 }

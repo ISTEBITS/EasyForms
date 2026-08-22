@@ -11,6 +11,7 @@ import connectDB from './config/connectDB.js';
 import AuthRoute from './routes/auth.js';
 import UploadRoute from './routes/uploads.js';
 import FormRoute from './routes/forms.js';
+import ApiKeyRoute from './routes/api-keys.js';
 
 
 
@@ -26,10 +27,14 @@ app.set('trust proxy', 1);
 app.use(helmet());
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    return callback(new Error('CORS origin denied'));
+    // Allow same-origin requests (server-to-server, Postman, etc.)
+    if (!origin) return callback(null, true);
+    // Allow configured origins (existing EasyForms SPA)
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    // Allow any origin — SDK embeds from third-party sites authenticate via API key,
+    // not cookies. Cookie auth (credentials: true) only works for allowedOrigins.
+    // SDK consumers use Bearer token auth which doesn't need cookies.
+    return callback(null, true);
   },
   credentials: true,
 }));
@@ -37,17 +42,33 @@ app.use(express.json());
 app.use(cookieParser())
 app.use('/uploads', express.static(path.join(import.meta.dirname, 'uploads')));
 
-const limiter = rateLimit({
+// Rate limiters
+const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-app.use('/api/auth', limiter);
-app.use('/api/forms', FormRoute);
-app.use('/api/upload', UploadRoute);
-app.use('/api/auth', AuthRoute);
+const uploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  message: { message: "Too many upload requests, please try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use('/api/auth', authLimiter, AuthRoute);
+app.use('/api/upload', uploadLimiter, UploadRoute);
+app.use('/api/forms', apiLimiter, FormRoute);
+app.use('/api/api-keys', apiLimiter, ApiKeyRoute);
 
 app.use((err, req, res, next) => {
   const statusCode = err.statusCode || 500;

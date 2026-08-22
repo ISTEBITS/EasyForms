@@ -16,11 +16,11 @@ const renderInlineMarkdown = (value: string) =>
     .replace(
       /\[([^\]]+)\]\(([^)\s]+)\)/g,
       (_, text: string, href: string) =>
-        `<a href="${sanitizeUrl(href)}" target="_blank" rel="noopener noreferrer" class="text-cyan-300 hover:text-cyan-200 underline underline-offset-2">${text}</a>`,
+        `<a href="${sanitizeUrl(href)}" target="_blank" rel="noopener noreferrer" class="text-accent-7 hover:text-foreground underline underline-offset-2">${text}</a>`,
     )
     .replace(
       /`([^`]+)`/g,
-      '<code class="px-1.5 py-0.5 rounded bg-zinc-950 border border-white/10 text-zinc-200">$1</code>',
+      '<code class="px-1.5 py-0.5 rounded-xs bg-accent-1 border border-border text-foreground">$1</code>',
     )
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/\*([^*]+)\*/g, "<em>$1</em>")
@@ -45,7 +45,7 @@ export const renderMarkdownPreview = (value: string) => {
     if (line.startsWith("```")) {
       if (inCodeBlock) {
         output.push(
-          `<pre class="overflow-x-auto rounded-lg border border-white/10 bg-zinc-950/80 p-3"><code>${codeBuffer.join("\n")}</code></pre>`,
+          `<pre class="overflow-x-auto rounded-sm border border-border bg-accent-1 p-3"><code>${codeBuffer.join("\n")}</code></pre>`,
         );
         inCodeBlock = false;
         codeBuffer = [];
@@ -83,7 +83,7 @@ export const renderMarkdownPreview = (value: string) => {
             ? "text-xl sm:text-2xl"
             : "text-base sm:text-lg";
       output.push(
-        `<h${level} class="font-semibold text-white ${sizeClass}">${renderInlineMarkdown(heading[2])}</h${level}>`,
+        `<h${level} class="font-semibold text-foreground ${sizeClass}">${renderInlineMarkdown(heading[2])}</h${level}>`,
       );
       continue;
     }
@@ -95,7 +95,7 @@ export const renderMarkdownPreview = (value: string) => {
         inOl = false;
       }
       if (!inUl) {
-        output.push('<ul class="list-disc ml-5 space-y-1.5 text-zinc-300">');
+        output.push('<ul class="list-disc ml-5 space-y-1.5 text-accent-6">');
         inUl = true;
       }
       output.push(`<li>${renderInlineMarkdown(ulItem[1])}</li>`);
@@ -109,7 +109,7 @@ export const renderMarkdownPreview = (value: string) => {
         inUl = false;
       }
       if (!inOl) {
-        output.push('<ol class="list-decimal ml-5 space-y-1.5 text-zinc-300">');
+        output.push('<ol class="list-decimal ml-5 space-y-1.5 text-accent-6">');
         inOl = true;
       }
       output.push(`<li>${renderInlineMarkdown(olItem[1])}</li>`);
@@ -123,22 +123,22 @@ export const renderMarkdownPreview = (value: string) => {
     const quote = line.match(/^>\s+(.+)$/);
     if (quote) {
       output.push(
-        `<blockquote class="border-l-2 border-cyan-500/50 pl-3 italic text-zinc-300">${renderInlineMarkdown(quote[1])}</blockquote>`,
+        `<blockquote class="border-l-2 border-accent-2 pl-3 italic text-accent-5">${renderInlineMarkdown(quote[1])}</blockquote>`,
       );
       continue;
     }
 
     if (/^---+$/.test(line)) {
-      output.push('<hr class="border-white/10 my-2" />');
+      output.push('<hr class="border-border my-2" />');
       continue;
     }
 
-    output.push(`<p class="text-zinc-300">${renderInlineMarkdown(line)}</p>`);
+    output.push(`<p class="text-accent-6">${renderInlineMarkdown(line)}</p>`);
   }
 
   if (inCodeBlock) {
     output.push(
-      `<pre class="overflow-x-auto rounded-lg border border-white/10 bg-zinc-950/80 p-3"><code>${codeBuffer.join("\n")}</code></pre>`,
+      `<pre class="overflow-x-auto rounded-sm border border-border bg-accent-1 p-3"><code>${codeBuffer.join("\n")}</code></pre>`,
     );
   }
   closeLists(output, inUl, inOl);
@@ -153,3 +153,24 @@ export const formHeaderMarkdownSource = (
   title?.trim()
     ? `# ${title}\n\n${description || ""}`
     : `# Untitled Form\n\n${fallbackDescription}`;
+
+export const stripMarkdown = (value: string): string => {
+  if (!value) return "";
+  return value
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/#{1,6}\s+/g, "")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/~~([^~]+)~~/g, "$1")
+    .replace(/^>\s+/gm, "")
+    .replace(/^[-*]\s+/gm, "")
+    .replace(/^\d+\.\s+/gm, "")
+    .trim();
+};
+
+export const renderInlineMarkdownHtml = (value: string): string => {
+  if (!value) return "";
+  const escaped = escapeHtml(value);
+  return renderInlineMarkdown(escaped);
+};

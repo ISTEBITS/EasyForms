@@ -62,7 +62,7 @@ export default function EditorWrapper({ onBack }: { onBack: () => void }) {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="flex items-center gap-2 text-sm text-zinc-400">
+        <div className="flex items-center gap-2 text-sm text-accent-5">
           <Loader className="h-4 w-4 animate-spin" />
           Loading editor
         </div>

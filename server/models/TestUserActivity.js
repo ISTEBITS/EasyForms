@@ -4,7 +4,8 @@ const TestUserActivitySchema = new mongoose.Schema({
   testUserId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "TestUser",
-    required: true,
+    required: false,
+    default: null,
     index: true,
   },
   email: { type: String, required: true, index: true },

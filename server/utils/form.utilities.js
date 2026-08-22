@@ -59,6 +59,12 @@ export function getClosedMessage(form, reason) {
   return "Form is not accepting responses";
 }
 
+export function getClosedCode(reason) {
+  if (reason === "deadline") return "FORM_DEADLINE_EXPIRED";
+  if (reason === "max_responses") return "FORM_RESPONSE_LIMIT_REACHED";
+  return "FORM_INACTIVE";
+}
+
 export async function syncFormPublicationState(form) {
   if (!form || !form.isPublished) return false;
   const closeReason = getAutoCloseReason(form);

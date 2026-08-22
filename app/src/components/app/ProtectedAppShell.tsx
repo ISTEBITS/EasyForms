@@ -1,29 +1,60 @@
+import { useState, useEffect, type ComponentType } from "react";
 import { Link, NavLink, Outlet, matchPath, useLocation } from "react-router-dom";
-import { ChevronRight, FileText, LayoutDashboard, MessageSquareText } from "lucide-react";
-import type { ComponentType } from "react";
+import {
+  LayoutDashboard,
+  FileText,
+  MessageSquareText,
+  Key,
+  Activity,
+  LogOut,
+  Menu,
+  X,
+  Search,
+} from "lucide-react";
 import Logo from "@/components/ui/Logo";
 import { useAuth } from "@/context/auth";
 import { Button } from "@/components/ui/button";
+import { GlobalSearchModal } from "@/components/ui/GlobalSearchModal";
 import {
   ADMIN_DASHBOARD_SCOPE,
   DASHBOARD_SCOPE_PARAM,
   normalizeDashboardScope,
 } from "@/lib/dashboard-scope";
+import {
+  DashboardSkeleton,
+  EditorSkeleton,
+  ResponsesSkeleton,
+  ApiKeysSkeleton,
+  ActivitySkeleton,
+} from "@/components/ui/skeleton-new";
 
 type NavTab = {
-  key: "dashboard" | "editor" | "responses";
+  key: "dashboard" | "editor" | "responses" | "api-keys" | "activity";
   label: string;
   icon: ComponentType<{ className?: string }>;
   to: string;
   active: boolean;
 };
 
-const segmentStyles =
-  "inline-flex items-center rounded-md border border-zinc-800 bg-zinc-900/70 px-2 py-2 text-xs text-zinc-400";
-
 export default function ProtectedAppShell() {
   const location = useLocation();
   const { user, logout } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false);
+
+  // Global Cmd+K / Ctrl+K keyboard shortcut listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setIsGlobalSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   const isAdmin = user?.role === "admin";
   const scope = normalizeDashboardScope(
     new URLSearchParams(location.search).get(DASHBOARD_SCOPE_PARAM),
@@ -35,155 +66,268 @@ export default function ProtectedAppShell() {
 
   const withScope = (path: string) => `${path}${scopeQuery}`;
 
-  const dashboardMatch = matchPath("/dashboard", location.pathname);
   const editorRootMatch = matchPath("/editor", location.pathname);
   const editorMatch = matchPath("/editor/:formId", location.pathname);
   const responsesRootMatch = matchPath("/responses", location.pathname);
   const responsesMatch = matchPath("/form/:id/responses", location.pathname);
+  const apiKeysMatch = matchPath("/api-keys", location.pathname);
+  const activityMatch = matchPath("/activity", location.pathname);
 
   const activeKey: NavTab["key"] = editorMatch
     ? "editor"
     : editorRootMatch
       ? "editor"
       : responsesMatch
-      ? "responses"
-      : responsesRootMatch
         ? "responses"
-      : "dashboard";
+        : responsesRootMatch
+          ? "responses"
+          : apiKeysMatch
+            ? "api-keys"
+            : activityMatch
+              ? "activity"
+              : "dashboard";
 
   const tabs: NavTab[] = [
     {
-      key: "dashboard",
+      key: "dashboard" as const,
       label: "Dashboard",
       icon: LayoutDashboard,
       to: withScope("/dashboard"),
       active: activeKey === "dashboard",
     },
     {
-      key: "editor",
+      key: "editor" as const,
       label: "Editor",
       icon: FileText,
       to: withScope("/editor"),
       active: activeKey === "editor",
     },
     {
-      key: "responses",
+      key: "responses" as const,
       label: "Responses",
       icon: MessageSquareText,
       to: withScope("/responses"),
       active: activeKey === "responses",
     },
-  ];
+    {
+      key: "api-keys" as const,
+      label: "API Keys",
+      icon: Key,
+      to: withScope("/api-keys"),
+      active: activeKey === "api-keys",
+    },
+    {
+      key: "activity" as const,
+      label: "Activity",
+      icon: Activity,
+      to: withScope("/activity"),
+      active: activeKey === "activity",
+    },
+  ].filter((tab) => !(user?.role === "test_user" && tab.key === "activity"));
 
-  const breadcrumbs = [{ label: "Home", to: withScope("/dashboard") }];
 
-  if (editorMatch?.params.formId) {
-    breadcrumbs.push({ label: "Editor", to: withScope("/editor") });
-    breadcrumbs.push({
-      label: editorMatch.params.formId,
-      to: withScope(`/editor/${editorMatch.params.formId}`),
-    });
-  } else if (editorRootMatch) {
-    breadcrumbs.push({ label: "Editor", to: withScope("/editor") });
-  } else if (responsesMatch?.params.id) {
-    breadcrumbs.push({ label: "Responses", to: withScope("/responses") });
-    breadcrumbs.push({
-      label: responsesMatch.params.id,
-      to: withScope(`/form/${responsesMatch.params.id}/responses`),
-    });
-  } else if (responsesRootMatch) {
-    breadcrumbs.push({ label: "Responses", to: withScope("/responses") });
-  } else if (dashboardMatch) {
-    breadcrumbs.push({ label: "Dashboard", to: withScope("/dashboard") });
-  }
+  useEffect(() => {
+    setIsNavigating(true);
+    const timer = setTimeout(() => setIsNavigating(false), 150);
+    return () => clearTimeout(timer);
+  }, [location.pathname]);
+
+  const userName =
+    user?.name ||
+    user?.sub?.split("@")[0] ||
+    (user?.role === "admin" ? "Admin User" : "Test User");
+
+  const userInitial = userName.charAt(0).toUpperCase();
+
+  const renderCurrentSkeleton = () => {
+    switch (activeKey) {
+      case "dashboard":
+        return <DashboardSkeleton />;
+      case "editor":
+        return <EditorSkeleton />;
+      case "responses":
+        return <ResponsesSkeleton />;
+      case "api-keys":
+        return <ApiKeysSkeleton />;
+      case "activity":
+        return <ActivitySkeleton />;
+      default:
+        return <DashboardSkeleton />;
+    }
+  };
 
   return (
-    <div className="min-h-screen">
-      <header className="sticky top-0 z-40 border-b border-zinc-800 bg-[#000000]/95 backdrop-blur">
-        <div className="mx-auto flex max-w-[1400px] flex-col gap-3 px-4 py-3 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between gap-4">
-            <Link to={withScope("/dashboard")} className="flex items-center gap-3">
-              <div className="h-8 w-8">
-                <Logo size={30}/>
+    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-foreground selection:text-background">
+      {/* Geist Blur Header Navbar */}
+      <header className="sticky top-0 z-50 h-14 border-b border-border bg-background/80 backdrop-blur-md transition-all">
+        <div className="h-full px-4 lg:px-8 flex items-center justify-between gap-4">
+          {/* Left Side Branding & Workspace */}
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="lg:hidden p-1.5 text-accent-5 hover:text-foreground rounded-sm hover:bg-accent-1"
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+
+            <Link
+              to={withScope("/dashboard")}
+              className="flex items-center gap-2.5 group transition-transform duration-150 active:scale-98"
+            >
+              <div className="flex h-7 w-7 items-center justify-center">
+                <Logo size={18} />
               </div>
-              <div className="leading-tight">
-                <p className="text-sm font-semibold text-zinc-100">EasyForms</p>
-                <p className="text-xs text-zinc-500">Workspace</p>
-              </div>
+              <span className="font-semibold text-sm tracking-tight text-foreground font-sans">
+                EasyForms
+              </span>
             </Link>
 
-            <div className="flex items-center gap-2">
-              {user?.role === "test_user" && user?.picture ? (
-                <div className="inline-flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-zinc-700 bg-zinc-900/70">
+            <span className="text-accent-4 text-xs font-mono hidden sm:inline-block">/</span>
+
+            <div className="hidden sm:flex items-center gap-2 rounded-full border border-border bg-accent-1 px-2.5 py-0.5 font-mono text-[10px] uppercase font-semibold text-accent-6">
+              <span className={`h-1.5 w-1.5 rounded-full ${isAdmin ? "bg-blue-500" : "bg-purple-500"}`} />
+              <span className="truncate max-w-[160px]">
+                {isAdmin ? "Admin Workspace" : "Test User"}
+              </span>
+            </div>
+          </div>
+
+          {/* Right Side Search Trigger, Profile & Actions */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsGlobalSearchOpen(true)}
+              className="flex rounded-full items-center justify-between gap-3 h-8 w-fit sm:w-60 md:w-72 sm:rounded-sm border border-border bg-accent-1/50 px-2.5 text-xs text-accent-5 hover:border-accent-6 hover:text-foreground transition-all cursor-pointer"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <Search className="h-3.5 w-3.5 text-accent-5 shrink-0" />
+                <span className="hidden truncate font-sans text-xs">Search forms, pages...</span>
+              </div>
+              <kbd className="hidden sm:inline-block font-mono text-[10px] uppercase border border-border bg-background px-1.5 py-0.5 rounded-xs text-accent-5">
+                ⌘K
+              </kbd>
+            </button>
+
+            <div className="flex items-center gap-3 border-l border-border pl-3">
+              {user?.picture ? (
+                <div className="h-7 w-7 overflow-hidden rounded-full border border-border bg-accent-1">
                   <img
                     src={user.picture}
-                    alt={user.name || user.email || "Test user"}
+                    alt={userName}
                     className="h-full w-full object-cover"
                   />
                 </div>
               ) : (
-                <span className={segmentStyles}>{user?.sub?.split("@")[0] || "admin"}</span>
+                <div className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-accent-2 font-mono text-xs font-semibold text-foreground">
+                  {userInitial}
+                </div>
               )}
-              <Button
-                variant="outline"
-                onClick={() => {
-                  void logout();
-                }}
-                className="h-8 border-zinc-700 bg-zinc-900 text-zinc-200 hover:bg-zinc-800 hover:text-zinc-100"
-              >
-                Logout
-              </Button>
-            </div>
-          </div>
 
-          <nav className="flex items-center gap-2 overflow-x-auto">
-            {tabs.map((tab) => {
-              
-              const baseClass =
-                "relative inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm";
-
-              return (
-                <NavLink
-                  key={tab.key}
-                  to={tab.to}
-                  className={() =>
-                    `${baseClass} ${
-                      tab.active
-                        ? "border-zinc-700 bg-zinc-800 text-zinc-100"
-                        : "border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
-                    }`
-                  }
-                >
-                  
-                  {tab.label}
-                </NavLink>
-              );
-            })}
-          </nav>
-
-          <div className="flex items-center gap-2 pt-3 text-xs text-zinc-500">
-            {breadcrumbs.map((crumb, index) => (
-              <div key={crumb.label} className="flex items-center gap-2">
-                {index > 0 && <ChevronRight className="h-3.5 w-3.5" />}
-                <Link
-                  to={crumb.to}
-                  className={
-                    index === breadcrumbs.length - 1
-                      ? "text-zinc-300"
-                      : "text-zinc-500 hover:text-zinc-300"
-                  }
-                >
-                  {crumb.label}
-                </Link>
+              <div className="hidden sm:flex flex-col">
+                <span className="text-xs font-medium text-foreground leading-tight font-sans">
+                  {userName}
+                </span>
+                <span className="font-mono text-[10px] uppercase text-accent-5">
+                  {user?.role === "admin" ? "ADMIN" : "TEST USER"}
+                </span>
               </div>
-            ))}
+            </div>
+
+            <Button
+              variant="secondary"
+              size="xs"
+              onClick={() => {
+                void logout();
+              }}
+              className="gap-1.5 font-sans text-xs"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Logout</span>
+            </Button>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-[1400px] px-4 py-4 sm:px-6 lg:px-8">
-        <Outlet />
-      </main>
+      {/* Main Layout Area */}
+      <div className="flex-1 flex min-h-[calc(100vh-3.5rem)]">
+        {/* Left Geist Architectural Sidebar */}
+        <aside className="hidden lg:flex w-60 shrink-0 flex-col justify-between border-r border-border bg-background p-4 sticky top-14 h-[calc(100vh-3.5rem)]">
+          <div className="space-y-6">
+            <div className="px-2">
+              <p className="font-mono text-[10px] uppercase font-semibold text-accent-4 tracking-wider">
+                Platform Navigation
+              </p>
+            </div>
+
+            <nav className="space-y-1">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <NavLink
+                    key={tab.key}
+                    to={tab.to}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-3 py-2 text-xs font-sans font-medium rounded-sm transition-all duration-150 ${isActive
+                        ? "bg-accent-1 text-foreground border border-border"
+                        : "text-accent-5 hover:text-foreground hover:bg-accent-1 border border-transparent"
+                      }`
+                    }
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{tab.label}</span>
+                    {tab.active && (
+                      <span className="ml-auto h-1.5 w-1.5 rounded-full bg-foreground" />
+                    )}
+                  </NavLink>
+                );
+              })}
+            </nav>
+          </div>
+
+        </aside>
+
+        {/* Mobile Navigation Drawer */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden fixed inset-0 z-40 bg-background/95 backdrop-blur-md flex flex-col p-6 space-y-4 pt-20 border-b border-border">
+            <div className="px-2">
+              <p className="font-mono text-[10px] uppercase font-semibold text-accent-5">Navigation</p>
+            </div>
+            <nav className="space-y-2">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <NavLink
+                    key={tab.key}
+                    to={tab.to}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-4 py-2.5 text-sm font-sans font-medium rounded-sm border ${isActive
+                        ? "bg-accent-1 text-foreground border-border"
+                        : "text-accent-5 hover:text-foreground border-transparent"
+                      }`
+                    }
+                  >
+                    <Icon className="h-4.5 w-4.5" />
+                    <span>{tab.label}</span>
+                  </NavLink>
+                );
+              })}
+            </nav>
+          </div>
+        )}
+
+        {/* Main Content Pane */}
+        <main className="flex-1 min-w-0 bg-background">
+          {isNavigating ? renderCurrentSkeleton() : <Outlet />}
+        </main>
+      </div>
+
+      {/* Global Vercel Search Modal Command Palette */}
+      <GlobalSearchModal
+        isOpen={isGlobalSearchOpen}
+        onClose={() => setIsGlobalSearchOpen(false)}
+      />
     </div>
   );
 }

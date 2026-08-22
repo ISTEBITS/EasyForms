@@ -4,6 +4,23 @@ const QuestionOptionSchema = new mongoose.Schema({
   id: String,
   label: String,
   value: String,
+  gotoQuestionId: String,
+});
+
+const QuestionConditionSchema = new mongoose.Schema({
+  id: String,
+  fieldId: String,
+  operator: {
+    type: String,
+    enum: ["equals", "not_equals", "contains", "greater_than", "less_than", "is_filled", "is_empty"],
+    default: "equals",
+  },
+  value: String,
+  action: {
+    type: String,
+    enum: ["show", "hide"],
+    default: "show",
+  },
 });
 
 const QuestionSchema = new mongoose.Schema({
@@ -30,6 +47,8 @@ const QuestionSchema = new mongoose.Schema({
   required: { type: Boolean, default: false },
   options: [QuestionOptionSchema],
   placeholder: String,
+  conditions: [QuestionConditionSchema],
+  logicOperator: { type: String, enum: ["AND", "OR"], default: "AND" },
   maxLength: Number,
   minRating: Number,
   maxRating: Number,
@@ -39,11 +58,12 @@ const QuestionSchema = new mongoose.Schema({
 });
 
 const FormThemeSchema = new mongoose.Schema({
-  primaryColor: { type: String, default: "#10b981" },
+  primaryColor: { type: String, default: "#7c3aed" },
   backgroundColor: { type: String, default: "#ffffff" },
   fontFamily: { type: String, default: "Inter" },
   logoUrl: { type: String, default: "" },
   bannerUrl: { type: String, default: "" },
+  backgroundImageUrl: { type: String, default: "" },
   bannerPositionX: { type: Number, default: 50 },
   bannerPositionY: { type: Number, default: 50 },
   brandName: { type: String, default: "" },

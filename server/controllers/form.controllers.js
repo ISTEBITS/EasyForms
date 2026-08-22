@@ -1,6 +1,7 @@
 import Form from "../models/Form.js";
 import Response from "../models/Response.js";
 import TestUserActivity from "../models/TestUserActivity.js";
+import Webhook from "../models/Webhook.js";
 import sanitize from "mongo-sanitize";
 import { verifyGoogleIdentity } from "../utils/googleAuth.js";
 import { getMailStatus, sendSubmissionReceipt } from "../utils/mailer.js";
@@ -9,7 +10,9 @@ import {
   getAutoCloseReason,
   syncFormPublicationState,
   getClosedMessage,
+  getClosedCode,
 } from "../utils/form.utilities.js";
+import { dispatchWebhookEvent } from "../utils/webhookSigning.js";
 
 const TEST_USER_DEFAULT_LOGO_URL =
   process.env.TEST_USER_DEFAULT_LOGO_URL || "/logo.svg";
@@ -97,6 +100,20 @@ async function createTestUserActivity(req, action, formId = null, metadata = {})
   }
 }
 
+async function dispatchWebhookForForm(formId, event) {
+  try {
+    const webhooks = await Webhook.find({
+      events: event.type,
+      isActive: true,
+    }).lean();
+    for (const webhook of webhooks) {
+      dispatchWebhookEvent(webhook, event);
+    }
+  } catch (error) {
+    console.error('Webhook lookup failed:', error.message);
+  }
+}
+
 export async function handleGetAllForms(req, res) {
   try {
     const query = isAdminSession(req)
@@ -141,21 +158,25 @@ export async function handleGetAllForms(req, res) {
 export async function handleGetPublicForm(req, res) {
   try {
     if (!isValidObjectId(req.params.id)) {
-      return res.status(400).json({ message: "Invalid form id" });
+      return res.status(400).json({ message: "Invalid form id", code: "INVALID_FORM_ID" });
     }
 
     const form = await Form.findById(req.params.id);
     if (!form) {
-      return res.status(404).json({ message: "Form not found" });
+      return res.status(404).json({ message: "Form not found", code: "FORM_NOT_FOUND" });
     }
     await syncFormPublicationState(form);
     if (!form.isPublished) {
       const reason = getAutoCloseReason(form);
-      return res.status(403).json({ message: getClosedMessage(form, reason) });
+      return res.status(403).json({
+        message: getClosedMessage(form, reason),
+        code: getClosedCode(reason),
+        reason: reason || "unpublished",
+      });
     }
     res.json(form);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: error.message, code: "SERVER_ERROR" });
   }
 }
 
@@ -170,11 +191,20 @@ export async function handleGetPublicFormBySlug(req, res) {
       slug: { $regex: `^${escapeRegex(rawSlug)}$`, $options: "i" },
     });
     if (!form) {
-      return res.status(404).json({ message: "Form not found" });
+      return res.status(404).json({ message: "Form not found", code: "FORM_NOT_FOUND" });
+    }
+    await syncFormPublicationState(form);
+    if (!form.isPublished) {
+      const reason = getAutoCloseReason(form);
+      return res.status(403).json({
+        message: getClosedMessage(form, reason),
+        code: getClosedCode(reason),
+        reason: reason || "unpublished",
+      });
     }
     res.json(form);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: error.message, code: "SERVER_ERROR" });
   }
 }
 
@@ -348,58 +378,96 @@ export async function handleGetResponseForAForm(req, res) {
 export async function handleSubmitAResponse(req, res) {
   try {
     if (!isValidObjectId(req.params.id)) {
-      return res.status(400).json({ message: "Invalid form id" });
+      return res.status(400).json({ message: "Invalid form id", code: "INVALID_FORM_ID" });
     }
 
     const form = await Form.findById(req.params.id);
     let verifiedEmail = null;
     let verifiedName = null;
     if (!form) {
-      return res.status(404).json({ message: "Form not found" });
+      return res.status(404).json({ message: "Form not found", code: "FORM_NOT_FOUND" });
     }
     await syncFormPublicationState(form);
     if (!form.isPublished) {
       const reason = getAutoCloseReason(form);
-      return res.status(403).json({ message: getClosedMessage(form, reason) });
-    }
-    if (!req.body.googleToken) {
-      return res.status(401).json({ message: "Google Sign In Required" });
+      return res.status(403).json({
+        message: getClosedMessage(form, reason),
+        code: getClosedCode(reason),
+        reason: reason || "unpublished",
+      });
     }
 
-    const identity = await verifyGoogleIdentity(req.body.googleToken);
-    verifiedEmail = identity?.email || null;
-    verifiedName = identity?.name || null;
-    if (!verifiedEmail) {
-      return res.status(401).json({ message: "Invalid Google token" });
+    // Google auth is OPTIONAL — gated by form.settings.requireLogin
+    if (req.body.googleToken) {
+      // Google token provided — verify it
+      const identity = await verifyGoogleIdentity(req.body.googleToken);
+      verifiedEmail = identity?.email || null;
+      verifiedName = identity?.name || null;
+      if (!verifiedEmail) {
+        return res.status(401).json({ message: "Invalid Google token", code: "INVALID_GOOGLE_TOKEN" });
+      }
+    } else if (form.settings?.requireLogin) {
+      // requireLogin is true but no googleToken provided
+      return res.status(401).json({ message: "Google Sign In Required", code: "GOOGLE_AUTH_REQUIRED" });
+    }
+    // If no googleToken and requireLogin is false → anonymous submission allowed
+    // Use provided respondent info if available
+    if (!verifiedEmail && req.body.respondent?.email) {
+      verifiedEmail = String(req.body.respondent.email).trim().toLowerCase() || null;
+    }
+    if (!verifiedName && req.body.respondent?.name) {
+      verifiedName = String(req.body.respondent.name).trim() || null;
     }
 
     if (!Array.isArray(req.body.answers)) {
-      return res.status(400).json({ message: "Answers must be an array" });
+      return res.status(400).json({ message: "Answers must be an array", code: "INVALID_PAYLOAD" });
     }
 
-    const exists = await Response.findOne({
-      formId: req.params.id,
-      respondentEmail: String(verifiedEmail).trim().toLowerCase(),
-    });
+    // Dedup check only when respondentEmail is available
+    if (verifiedEmail) {
+      const exists = await Response.findOne({
+        formId: req.params.id,
+        respondentEmail: String(verifiedEmail).trim().toLowerCase(),
+      });
 
-    if (exists && !form.settings.allowMultipleResponses) {
-      return res
-        .status(409)
-        .json({ message: "You have already submitted this form." });
+      if (exists && !form.settings.allowMultipleResponses) {
+        return res
+          .status(409)
+          .json({ message: "You have already submitted this form.", code: "DUPLICATE_RESPONSE" });
+      }
     }
+
+    const respondentEmailValue = verifiedEmail
+      ? String(verifiedEmail).trim().toLowerCase()
+      : null;
 
     const response = new Response({
       formId: req.params.id,
       answers: sanitize(req.body.answers),
-      respondentEmail: String(verifiedEmail).trim().toLowerCase(),
+      respondentEmail: respondentEmailValue,
       respondent: {
-        name: verifiedName || String(verifiedEmail).split("@")[0],
-        email: String(verifiedEmail).trim().toLowerCase(),
+        name: verifiedName || (verifiedEmail ? String(verifiedEmail).split("@")[0] : "Anonymous"),
+        email: respondentEmailValue,
       },
     });
 
     await response.save();
     await Form.updateOne({ _id: form._id }, { $inc: { responseCount: 1 } });
+
+    // Dispatch webhooks for form.submitted event (fire-and-forget)
+    dispatchWebhookForForm(form._id, {
+      type: 'form.submitted',
+      data: {
+        formId: String(form._id),
+        formTitle: form.title,
+        responseId: String(response._id),
+        respondentEmail: respondentEmailValue,
+        submittedAt: response.submittedAt,
+        answerCount: response.answers.length,
+      },
+    }).catch(err => {
+      console.error('Webhook dispatch error:', err.message);
+    });
 
     const refreshedForm = await Form.findById(form._id);
     if (refreshedForm) {
