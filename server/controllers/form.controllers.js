@@ -326,6 +326,11 @@ export async function handleUpdateForm(req, res) {
     delete cleanBody.owner;
     delete cleanBody.collaborators;
     delete cleanBody._id;
+    delete cleanBody.id;
+    delete cleanBody.__v;
+    delete cleanBody.createdAt;
+    delete cleanBody.updatedAt;
+    delete cleanBody.currentUserAccess;
 
     if (typeof cleanBody.slug === "string") {
       const sanitizedSlug = cleanBody.slug
