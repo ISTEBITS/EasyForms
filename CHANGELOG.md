@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 This project follows **Semantic Versioning (SemVer)**:  
 MAJOR.MINOR.PATCH (e.g., 2.1.0)
 
+## [2.3.0] - 2026-09-02
+
+### Added & Enhanced (App & Server)
+- **Google Sheets-Style Live Responses Grid**:
+  - Full-screen height interactive spreadsheet interface (`ResponsesSheetGrid.tsx`) with a continuous minimum of 25 grid rows.
+  - Direct in-cell editing: clicking or double-clicking any cell opens an inline editor right in the grid with no modal dialog required.
+  - Empty row direct fill: typing into any empty placeholder row automatically constructs and persists a new response record via `formsApi.manualCreateResponse`.
+  - Spreadsheet keyboard navigation: `Enter` (save & advance down), `Tab` (save & advance right), `Shift+Tab` (advance left), and `Escape` (cancel).
+  - High-contrast 2px active cell selection ring and editable respondent email cell.
+- **Dynamic Status Customization & Color Themes**:
+  - Replaced icon-based status pills with a minimal, clean dropdown button (no icons) showing the status label and chevron.
+  - Status Manager (`StatusManagerModal.tsx`): allows creating new custom status values and editing existing status labels.
+  - Custom background color picker for statuses supporting an 11-shade curated palette (`Gray`, `Blue`, `Emerald`, `Amber`, `Red`, `Purple`, `Teal`, `Pink`, `Indigo`, `Orange`, `Cyan`).
+  - Removed strict status enum constraints in MongoDB `Response` schema to support custom status labels dynamically.
+- **Collaborator Management & Responses Sharing**:
+  - Granular collaborator invitations by email with `viewer` and `editor` role permissions.
+  - Real-time collaborator count badge in the responses header.
+  - Public shared responses token links (`/forms/shared/:token`) with customizable access toggle.
+- **Public Form "Having Trouble?" Reporting System**:
+  - Clean respondent feedback and trouble reporting module on public forms (`HavingTroubleSection.tsx`).
+  - MongoDB `FormIssue` model and REST endpoints (`POST /api/forms/:id/issues`, `GET /api/forms/:id/issues`, `PATCH /api/forms/:id/issues/:issueId`).
+  - Dedicated **Reports** view tab in the responses suite to review trouble descriptions, respondent emails, and toggle resolution status.
+- **Public Form Custom Slugs & Routing**:
+  - Custom human-readable URL slugs for forms (e.g., `/form/:slug`) with lowercase and hyphen enforcement.
+  - Uniqueness validation and collision resolution in form settings.
+- **Form Section Completion Stepper**:
+  - Section indicators now evaluate required field completion dynamically, displaying an emerald checkmark badge upon completion.
+  - Interactive section pills enabling direct jumping between multi-page form sections.
+- **Branding & Logo Reliability**:
+  - Fixed backend test user restriction bug where `TEST_USER_DEFAULT_LOGO_URL` inadvertently overwrote custom user-uploaded logos.
+  - Conditional branding display: hides branding header entirely if no logo, brand name, or tagline is provided (no placeholder fallbacks).
+- **Design System & Typography Standardization**:
+  - Aligned all components with `DESIGN.md` tokens: near-black `#0c0c0c` / `#171717` surfaces, 1px `#262626` hairline borders, and `rounded-sm` geometric radius.
+  - Removed default browser blue focus rings, standardizing on neutral monochrome border focus.
+  - Removed improper `font-mono` and extra-small font sizes (`text-xs` / `text-[10px]`) in public forms and analytics in favor of standard `font-sans text-sm` and `text-base`.
+  - Streamlined Google verification prompt, removing redundant copy.
+
+### Fixed
+- Fixed Google OAuth popup cancellation handling (`onNonOAuthError` with `popup_closed`) preventing stuck "Authenticating..." loading state.
+- Fixed Form Editor canvas background defaulting to bright white (`#ffffff`) inline style; defaults cleanly to `bg-background`.
+- Fixed unused imports (`ArrowLeft`) and variable declarations (`colorDef`) in response components.
+- Fixed TypeScript return type mismatch in `ManualResponseModal` submit callback.
+- Fixed Radio group tick duplication in `QuestionPreview`.
+
+---
+
 ## [2.2.0] - 2026-08-23
 
 ### Added (App & Server)
