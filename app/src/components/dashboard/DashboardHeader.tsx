@@ -50,11 +50,11 @@ export function DashboardHeader({
   return (
     <header className="mb-6 rounded-sm border border-border bg-background p-4 flex items-center justify-between">
       <div className="flex items-center gap-2 font-sans">
-        <span className="font-mono text-xs uppercase font-semibold border border-border px-2.5 py-0.5 rounded-full bg-accent-1 text-accent-6">
+        <span className="font-sans text-xs uppercase font-semibold border border-border px-2.5 py-0.5 rounded-full bg-accent-1 text-accent-6">
           Form Management
         </span>
         <span className="text-xs text-accent-5 hidden sm:inline-block">
-          Use <kbd className="font-mono border border-border bg-accent-1 px-1 py-0.5 rounded-xs text-accent-6">⌘K</kbd> for global search
+          Use <kbd className="font-sans border border-border bg-accent-1 px-1 py-0.5 rounded-xs text-accent-6">⌘K</kbd> for global search
         </span>
       </div>
 

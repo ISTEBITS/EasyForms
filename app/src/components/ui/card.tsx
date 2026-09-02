@@ -11,7 +11,7 @@ function Card({
     <div
       data-slot="card"
       className={cn(
-        "rounded-sm border border-border bg-background p-6 transition-all duration-150 hover:border-accent-6",
+        "rounded-md border border-border bg-background p-6 transition-all duration-150 hover:border-accent-6",
         className
       )}
       {...props}

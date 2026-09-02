@@ -28,6 +28,12 @@ module.exports = {
         "foreground-muted": "var(--foreground-muted)",
         "foreground-subtle": "var(--foreground-subtle)",
 
+        ink: "var(--ink, #171717)",
+        canvas: "var(--canvas, #fafafa)",
+        "canvas-elevated": "var(--canvas-elevated, #ffffff)",
+        hairline: "var(--hairline, #ebebeb)",
+        "hairline-soft": "var(--hairline-soft, #f2f2f2)",
+
         border: "var(--border)",
         "border-hover": "var(--border-hover)",
 
@@ -51,6 +57,28 @@ module.exports = {
         success: "var(--geist-success)",
         warning: "var(--geist-warning)",
 
+        link: {
+          DEFAULT: "var(--link, #0070f3)",
+          deep: "var(--link-deep, #0761d1)",
+          soft: "var(--link-soft, #d3e5ff)",
+        },
+
+        brand: {
+          violet: "#7928ca",
+          cyan: "#50e3c2",
+          pink: "#ff0080",
+          magenta: "#eb367f",
+        },
+
+        gradient: {
+          "develop-start": "#007cf0",
+          "develop-end": "#00dfd8",
+          "preview-start": "#7928ca",
+          "preview-end": "#ff0080",
+          "ship-start": "#ff4d4d",
+          "ship-end": "#f9cb28",
+        },
+
         primary: {
           DEFAULT: "var(--primary)",
           foreground: "var(--primary-foreground)",
@@ -68,8 +96,8 @@ module.exports = {
       },
 
       fontFamily: {
-        sans: ["var(--font-sans)", "sans-serif"],
-        mono: ["var(--font-sans)", "sans-serif"],
+        sans: ["var(--font-sans)", "Geist Sans", "Inter", "sans-serif"],
+        mono: ["var(--font-mono)", "Geist Mono", "monospace"],
       },
 
       fontSize: {
@@ -87,19 +115,23 @@ module.exports = {
       },
 
       maxWidth: {
-        app: "1280px",
-        content: "1440px",
+        app: "1200px",
+        content: "1200px",
       },
 
       borderRadius: {
         xs: "var(--radius-xs)",
-        sm: "var(--radius-sm)",
-        md: "var(--radius-md)",
-        lg: "var(--radius-lg)",
-        xl: "var(--radius-xl)",
+        sm: "var(--radius-sm, 6px)",
+        md: "var(--radius-md, 12px)",
+        lg: "var(--radius-lg, 16px)",
+        "pill-category": "var(--radius-pill-category, 64px)",
+        pill: "var(--radius-pill, 100px)",
+        full: "var(--radius-full, 9999px)",
       },
 
       boxShadow: {
+        whisper: "var(--shadow-whisper)",
+        floating: "var(--shadow-floating)",
         xs: "var(--shadow-xs)",
         sm: "var(--shadow-sm)",
         md: "var(--shadow-md)",

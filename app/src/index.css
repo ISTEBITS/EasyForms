@@ -10,10 +10,10 @@
 =========================== */
 
 @layer base {
-  :root, .dark {
-    color-scheme: dark;
+  :root {
+    color-scheme: light dark;
 
-    /* Foreground & Background colors */
+    /* Colors */
     --geist-background: #000000;
     --geist-foreground: #ffffff;
     --background: #000000;
@@ -21,37 +21,53 @@
     --background-tertiary: #111111;
 
     --foreground: #ffffff;
-    --foreground-muted: #888888;
+    --foreground-muted: #8f8f8f;
     --foreground-subtle: #666666;
 
-    /* Accent Grayscales (Geist Scale) */
+    --canvas: #fafafa;
+    --canvas-elevated: #ffffff;
+    --hairline: #ebebeb;
+    --hairline-soft: #f2f2f2;
+    --ink: #171717;
+    --body-text: #4d4d4d;
+    --mute-text: #8f8f8f;
+    --faint-text: #a1a1a1;
+
+    /* Accent Grayscales */
     --accents-1: #111111;
     --accents-2: #222222;
     --accents-3: #333333;
     --accents-4: #444444;
     --accents-5: #666666;
-    --accents-6: #888888;
+    --accents-6: #8f8f8f;
     --accents-7: #eaeaea;
     --accents-8: #fafafa;
 
     /* Status & Feedback */
-    --geist-error: #f85149;
-    --geist-error-light: rgba(248, 81, 73, 0.1);
+    --geist-error: #ee0000;
+    --geist-error-deep: #c50000;
+    --geist-error-light: rgba(238, 0, 0, 0.1);
     --geist-success: #0070f3;
     --geist-success-light: rgba(0, 112, 243, 0.1);
     --geist-warning: #f5a623;
     --geist-warning-light: rgba(245, 166, 35, 0.1);
 
+    --link: #0070f3;
+    --link-deep: #0761d1;
+    --link-soft: #d3e5ff;
+
     /* Typography */
     --font-sans: "Geist Sans", "Geist Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-mono: "Geist Mono", SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
 
-    /* Strict Geist Corners (Low Radius) */
+    /* Strict Radii */
     --radius-xs: 4px;
     --radius-sm: 6px;
-    --radius-md: 8px;
-    --radius-lg: 12px;
-    --radius-xl: 14px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-pill-category: 64px;
+    --radius-pill: 100px;
+    --radius-full: 9999px;
     --radius: 6px;
 
     /* Architectural Borders & Surfaces */
@@ -60,11 +76,9 @@
     --surface: rgba(10, 10, 10, 0.85);
     --surface-solid: #0a0a0a;
 
-    /* Shadows (Subtle / Minimal) */
-    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.5);
-    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.6);
-    --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.7);
+    /* Shadows */
+    --shadow-whisper: 0px 1px 1px rgba(0, 0, 0, 0.04);
+    --shadow-floating: 0px 2px 2px rgba(0, 0, 0, 0.04), 0px 8px 16px -4px rgba(0, 0, 0, 0.08);
 
     /* Motion */
     --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -81,10 +95,10 @@
     --secondary: #1f1f1f;
     --secondary-foreground: #ffffff;
     --muted: #1f1f1f;
-    --muted-foreground: #888888;
+    --muted-foreground: #8f8f8f;
     --accent: #151515;
     --accent-foreground: #ffffff;
-    --destructive: #f85149;
+    --destructive: #ee0000;
     --input: #222222;
     --ring: #ffffff;
 
@@ -96,6 +110,48 @@
     --sidebar-accent-foreground: #ffffff;
     --sidebar-border: #222222;
     --sidebar-ring: #ffffff;
+  }
+
+  .light {
+    --geist-background: #fafafa;
+    --geist-foreground: #171717;
+    --background: #fafafa;
+    --background-secondary: #ffffff;
+    --background-tertiary: #f2f2f2;
+
+    --foreground: #171717;
+    --foreground-muted: #4d4d4d;
+    --foreground-subtle: #8f8f8f;
+
+    --accents-1: #fafafa;
+    --accents-2: #eaeaea;
+    --accents-3: #999999;
+    --accents-4: #8f8f8f;
+    --accents-5: #666666;
+    --accents-6: #4d4d4d;
+    --accents-7: #333333;
+    --accents-8: #171717;
+
+    --border: #ebebeb;
+    --border-hover: #171717;
+    --surface: rgba(255, 255, 255, 0.85);
+    --surface-solid: #ffffff;
+
+    --card: #ffffff;
+    --card-foreground: #171717;
+    --popover: #ffffff;
+    --popover-foreground: #171717;
+    --primary: #171717;
+    --primary-foreground: #ffffff;
+    --secondary: #f2f2f2;
+    --secondary-foreground: #171717;
+    --muted: #f2f2f2;
+    --muted-foreground: #8f8f8f;
+    --accent: #f5f5f5;
+    --accent-foreground: #171717;
+    --destructive: #ee0000;
+    --input: #ebebeb;
+    --ring: #171717;
   }
 
   * {
@@ -114,13 +170,6 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-    background-color: var(--geist-background);
-    color: var(--geist-foreground);
-  }
-
-  ::selection {
-    background: var(--geist-foreground);
-    color: var(--geist-background);
   }
 }
 
@@ -148,7 +197,7 @@
   }
 
   .card {
-    @apply rounded-sm border border-border bg-background;
+    @apply rounded-md border border-border bg-background;
     transition: var(--transition-fast);
   }
 
@@ -176,30 +225,88 @@
     @apply scrollbar-hide;
   }
 
-  /* Geist Typography System */
-  .type-h1 {
-    @apply font-sans text-3xl font-bold tracking-tight leading-tight text-foreground;
+  /* Typography Scale from DESIGN.md */
+  .display-xl {
+    font-size: 48px;
+    line-height: 48px;
+    font-weight: 600;
+    letter-spacing: -2.4px;
   }
-  .type-h2 {
-    @apply font-sans text-2xl font-bold tracking-tight leading-snug text-foreground;
+
+  .heading-lg {
+    font-size: 32px;
+    line-height: 40px;
+    font-weight: 600;
+    letter-spacing: -1.28px;
   }
-  .type-h3 {
-    @apply font-sans text-lg font-semibold tracking-tight leading-snug text-foreground;
+
+  .heading-md {
+    font-size: 20px;
+    line-height: 28px;
+    font-weight: 600;
+    letter-spacing: -0.4px;
   }
-  .type-h4 {
-    @apply font-sans text-base font-semibold leading-normal text-foreground;
+
+  .label-sm {
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 500;
+    letter-spacing: -0.28px;
   }
-  .type-body {
-    @apply font-sans text-sm font-normal leading-relaxed text-foreground;
+
+  .mono-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: uppercase;
   }
-  .type-body-sm {
-    @apply font-sans text-xs font-normal leading-normal text-accent-5;
+
+  .body-lg {
+    font-size: 16px;
+    line-height: 24px;
+    font-weight: 400;
+    letter-spacing: 0;
   }
-  .type-label {
-    @apply font-sans text-xs font-medium leading-none text-foreground;
+
+  .body-md {
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 400;
+    letter-spacing: 0;
   }
-  .type-badge {
-    @apply font-mono text-xs font-semibold uppercase tracking-wider;
+
+  .body-sm {
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 400;
+    letter-spacing: 0;
+  }
+
+  .btn-lg {
+    font-size: 16px;
+    line-height: 20px;
+    font-weight: 500;
+    letter-spacing: 0;
+    border-radius: var(--radius-pill);
+    padding: 0 14px;
+  }
+
+  .btn-md {
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 500;
+    letter-spacing: 0;
+    border-radius: var(--radius-sm);
+    padding: 0 6px;
+  }
+
+  .type-code {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 400;
   }
 }
 ::selection {
