@@ -241,6 +241,68 @@ export const ResponsesSummaryAnalytics: React.FC<ResponsesSummaryAnalyticsProps>
                     ))}
                   </div>
                 )}
+
+                {/* Multiple Choice Grid Summary Breakdown */}
+                {question.type === "multiple_choice_grid" && (
+                  <div className="space-y-2.5 pt-1 text-sm font-sans">
+                    {(question.gridRows || []).map((rowName) => {
+                      const rowSelections = allAnswersForQ
+                        .map((ans) =>
+                          typeof ans === "object" && ans !== null
+                            ? (ans as Record<string, string>)[rowName]
+                            : undefined
+                        )
+                        .filter(Boolean) as string[];
+
+                      return (
+                        <div
+                          key={rowName}
+                          className="space-y-1.5 p-2.5 rounded-sm bg-accent-1/25 border border-border/40"
+                        >
+                          <div className="flex items-center justify-between text-xs font-semibold text-foreground">
+                            <span>{rowName}</span>
+                            <span className="text-accent-5 font-normal">
+                              {rowSelections.length} answers
+                            </span>
+                          </div>
+                          <div className="space-y-1 pt-0.5">
+                            {(question.options || []).map((opt) => {
+                              const count = rowSelections.filter(
+                                (s) => s === opt.value
+                              ).length;
+                              const pct =
+                                rowSelections.length > 0
+                                  ? Math.round(
+                                      (count / rowSelections.length) * 100
+                                    )
+                                  : 0;
+
+                              return (
+                                <div
+                                  key={opt.id}
+                                  className="flex items-center gap-2 text-xs"
+                                >
+                                  <span className="w-24 truncate text-accent-6">
+                                    {opt.label}
+                                  </span>
+                                  <div className="flex-1 h-2 rounded-xs bg-accent-2 overflow-hidden">
+                                    <div
+                                      className="h-full bg-foreground rounded-xs transition-all"
+                                      style={{ width: `${pct}%` }}
+                                    />
+                                  </div>
+                                  <span className="w-8 text-right text-accent-5">
+                                    {count}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}

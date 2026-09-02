@@ -90,7 +90,7 @@ export const formsApi = {
   updateResponse: async (
     formId: string,
     responseId: string,
-    data: Partial<FormResponse> & { newNote?: string }
+    data: Partial<FormResponse> & { newNote?: string; clientId?: string }
   ): Promise<FormResponse> => {
     const res = await apiRequest<ApiPayload>(`/forms/${formId}/responses/${responseId}`, {
       method: "PUT",
@@ -127,6 +127,7 @@ export const formsApi = {
       respondentName?: string;
       status?: string;
       tags?: string[];
+      clientId?: string;
     }
   ): Promise<FormResponse> => {
     const res = await apiRequest<ApiPayload>(`/forms/${formId}/responses/manual`, {
@@ -139,11 +140,12 @@ export const formsApi = {
   addCollaborator: async (
     formId: string,
     email: string,
-    role: "viewer" | "editor" | "admin"
+    role: "viewer" | "editor" | "admin",
+    sendEmail: boolean = true
   ): Promise<Form["collaborators"]> => {
     return apiRequest<Form["collaborators"]>(`/forms/${formId}/collaborators`, {
       method: "POST",
-      body: JSON.stringify({ email, role }),
+      body: JSON.stringify({ email, role, sendEmail }),
     });
   },
 

@@ -224,7 +224,7 @@ export function StatusManagerModal({
                           handleUpdateOption(opt.id, { label: e.target.value })
                         }
                         placeholder="Status label..."
-                        className="h-8 border-border bg-accent-1/50 text-sm font-medium text-foreground"
+                        className="h-8 border-border bg-background text-sm font-medium text-foreground"
                       />
                     </div>
 

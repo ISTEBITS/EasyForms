@@ -18,6 +18,11 @@ import {
   getClosedCode,
 } from "../utils/form.utilities.js";
 import { dispatchWebhookEvent } from "../utils/webhookSigning.js";
+import {
+  registerCollaboratorStream,
+  updateCollaboratorPresence,
+  broadcastFormEvent,
+} from "../services/collaboration.service.js";
 
 const TEST_USER_DEFAULT_LOGO_URL =
   process.env.TEST_USER_DEFAULT_LOGO_URL || "/logo.svg";
@@ -97,22 +102,16 @@ function enforceTestUserRestrictions(payload, { forceSettings = false } = {}) {
         ? { ...nextPayload.settings }
         : {};
 
+    const nextTheme =
+      nextSettings.theme && typeof nextSettings.theme === "object"
+        ? { ...nextSettings.theme }
+        : {};
+
     nextTheme.logoUrl = nextTheme.logoUrl || "";
     nextTheme.bannerUrl = nextTheme.bannerUrl || "";
-    nextTheme.backgroundImageUrl = nextTheme.backgroundImageUrl || nextTheme.bannerUrl || "";
     nextSettings.theme = nextTheme;
-
-    const nextEmailNotification =
-      nextSettings.emailNotification &&
-      typeof nextSettings.emailNotification === "object"
-        ? { ...nextSettings.emailNotification }
-        : {};
-    nextEmailNotification.enabled = false;
-    nextSettings.emailNotification = nextEmailNotification;
-
     nextPayload.settings = nextSettings;
   }
-  nextPayload.isTestUserForm = true;
 
   return nextPayload;
 }
@@ -152,12 +151,14 @@ async function dispatchWebhookForForm(formId, event) {
 
 export async function handleGetAllForms(req, res) {
   try {
+    const isTestUser = isTestUserSession(req);
     const testUserId = getSessionTestUserId(req);
     const email = getSessionEmail(req);
 
-    let query = {};
-    if (!isAdminSession(req)) {
-      const orConditions = [];
+    const orConditions = [];
+    if (isAdminSession(req)) {
+      // Admin sees all
+    } else {
       if (testUserId) {
         orConditions.push({ "owner.testUserId": testUserId });
       }
@@ -165,38 +166,10 @@ export async function handleGetAllForms(req, res) {
         orConditions.push({ "owner.email": email });
         orConditions.push({ "collaborators.email": email });
       }
-      query = orConditions.length > 0 ? { $or: orConditions } : { _id: null };
     }
 
-    const forms = await Form.find(query).sort({ createdAt: -1 });
-
-    const formIds = forms.map((form) => form._id);
-    const responseCounts = await Response.aggregate([
-      { $match: { formId: { $in: formIds } } },
-      { $group: { _id: "$formId", count: { $sum: 1 } } },
-    ]);
-    const countMap = new Map(
-      responseCounts.map((item) => [String(item._id), Number(item.count) || 0]),
-    );
-
-    const countSyncOps = [];
-    forms.forEach((form) => {
-      const actualCount = countMap.get(String(form._id)) || 0;
-      if (Number(form.responseCount || 0) !== actualCount) {
-        countSyncOps.push({
-          updateOne: {
-            filter: { _id: form._id },
-            update: { $set: { responseCount: actualCount } },
-          },
-        });
-      }
-      form.responseCount = actualCount;
-    });
-
-    if (countSyncOps.length > 0) {
-      await Form.bulkWrite(countSyncOps);
-    }
-
+    const filter = orConditions.length > 0 ? { $or: orConditions } : {};
+    const forms = await Form.find(filter).sort({ createdAt: -1 });
     await Promise.all(forms.map((form) => syncFormPublicationState(form)));
     res.json(forms);
   } catch (error) {
@@ -279,7 +252,9 @@ export async function handleGetSingleForm(req, res) {
     }
 
     await syncFormPublicationState(form);
-    res.json(form);
+    const formObj = form.toObject();
+    formObj.currentUserAccess = access;
+    res.json(formObj);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -337,7 +312,20 @@ export async function handleUpdateForm(req, res) {
       return res.status(400).json({ message: "Invalid form id" });
     }
 
+    const form = await Form.findById(req.params.id);
+    if (!form) {
+      return res.status(404).json({ message: "Form not found" });
+    }
+
+    const access = getUserFormAccess(form, req);
+    if (!access || !access.canEdit) {
+      return res.status(403).json({ message: "Permission denied. You do not have permission to edit this form." });
+    }
+
     let cleanBody = sanitize(req.body);
+    delete cleanBody.owner;
+    delete cleanBody.collaborators;
+    delete cleanBody._id;
 
     if (typeof cleanBody.slug === "string") {
       const sanitizedSlug = cleanBody.slug
@@ -362,16 +350,7 @@ export async function handleUpdateForm(req, res) {
       cleanBody = enforceTestUserRestrictions(cleanBody);
     }
 
-    const filter = isAdminSession(req)
-      ? { _id: req.params.id }
-      : { _id: req.params.id, "owner.testUserId": getSessionTestUserId(req) };
-    const form = await Form.findOneAndUpdate(filter, cleanBody, {
-      new: true,
-      runValidators: true,
-    });
-    if (!form) {
-      return res.status(404).json({ message: "Form not found" });
-    }
+    Object.assign(form, cleanBody);
     if (isTestUserSession(req)) {
       form.settings = {
         ...form.settings,
@@ -380,14 +359,18 @@ export async function handleUpdateForm(req, res) {
           enabled: false,
         },
       };
-      await form.save();
     }
+    await form.save();
     await syncFormPublicationState(form);
     await createTestUserActivity(req, "form.update", form._id, {
       title: form.title,
     });
 
-    res.json(form);
+    broadcastFormEvent(form._id.toString(), "form_updated", form);
+
+    const formObj = form.toObject();
+    formObj.currentUserAccess = access;
+    res.json(formObj);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -399,18 +382,23 @@ export async function handleDeleteForm(req, res) {
       return res.status(400).json({ message: "Invalid form id" });
     }
 
-    const filter = isAdminSession(req)
-      ? { _id: req.params.id }
-      : { _id: req.params.id, "owner.testUserId": getSessionTestUserId(req) };
-
-    const form = await Form.findOneAndDelete(filter);
+    const form = await Form.findById(req.params.id);
     if (!form) {
       return res.status(404).json({ message: "Form not found" });
     }
+
+    const access = getUserFormAccess(form, req);
+    if (!access || !access.isOwner) {
+      return res.status(403).json({ message: "Permission denied. Only the owner can delete this form." });
+    }
+
+    await Form.findByIdAndDelete(req.params.id);
     await Response.deleteMany({ formId: req.params.id });
     await createTestUserActivity(req, "form.delete", form._id, {
       title: form.title,
     });
+
+    broadcastFormEvent(form._id.toString(), "form_deleted", { formId: form._id });
 
     res.json({ message: "Form deleted successfully" });
   } catch (error) {
@@ -699,6 +687,7 @@ export async function handleUpdateResponse(req, res) {
     response.editedBy = req.user?.name || getSessionEmail(req) || (isAdminSession(req) ? "Admin" : "Editor");
 
     await response.save();
+    broadcastFormEvent(formId, "response_updated", response, cleanBody.clientId);
     res.json(response);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -729,6 +718,7 @@ export async function handleDeleteSingleResponse(req, res) {
     }
 
     await Form.findByIdAndUpdate(formId, { $inc: { responseCount: -1 } });
+    broadcastFormEvent(formId, "response_deleted", { responseId });
     res.json({ message: "Response deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -763,6 +753,7 @@ export async function handleBulkDeleteResponses(req, res) {
       $inc: { responseCount: -result.deletedCount },
     });
 
+    broadcastFormEvent(formId, "responses_bulk_deleted", { responseIds });
     res.json({ message: `${result.deletedCount} responses deleted successfully` });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -794,6 +785,7 @@ export async function handleBulkUpdateResponseStatus(req, res) {
       { $set: { status, updatedAt: new Date(), editedBy: editorName } }
     );
 
+    broadcastFormEvent(formId, "responses_status_updated", { responseIds, status });
     res.json({ message: "Responses status updated successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -840,6 +832,7 @@ export async function handleManualCreateResponse(req, res) {
     form.responseCount = (form.responseCount || 0) + 1;
     await form.save();
 
+    broadcastFormEvent(formId, "response_created", newResponse, cleanBody.clientId);
     res.status(201).json(newResponse);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -849,8 +842,9 @@ export async function handleManualCreateResponse(req, res) {
 // Add a collaborator to form
 export async function handleAddCollaborator(req, res) {
   try {
+    const cleanBody = sanitize(req.body);
+    const { email, role, sendEmail } = cleanBody;
     const { id: formId } = req.params;
-    const { email, role } = sanitize(req.body);
     if (!isValidObjectId(formId) || !email) {
       return res.status(400).json({ message: "Form ID and collaborator email are required" });
     }
@@ -884,27 +878,30 @@ export async function handleAddCollaborator(req, res) {
 
     await form.save();
 
-    // Send collaboration invitation email
-    const inviterName = req.user?.name || req.user?.username || req.user?.sub || "Team Member";
-    const inviterEmail = getSessionEmail(req);
+    // Send collaboration invitation email if enabled
+    if (sendEmail !== false) {
+      const inviterName = req.user?.name || req.user?.username || req.user?.sub || "Team Member";
+      const inviterEmail = getSessionEmail(req);
 
-    void sendCollaboratorInviteEmail({
-      to: normalizedEmail,
-      formTitle: form.title,
-      formId: form._id,
-      role: assignedRole,
-      inviterName,
-      inviterEmail,
-    }).then((mailResult) => {
-      if (!mailResult.sent) {
-        console.warn(`[Collaborator Email] Notification not delivered to ${normalizedEmail}: ${mailResult.reason}`);
-      } else {
-        console.log(`[Collaborator Email] Invitation successfully sent to ${normalizedEmail} via ${mailResult.provider}`);
-      }
-    }).catch((err) => {
-      console.error("[Collaborator Email] Error sending invite:", err.message);
-    });
+      void sendCollaboratorInviteEmail({
+        to: normalizedEmail,
+        formTitle: form.title,
+        formId: form._id,
+        role: assignedRole,
+        inviterName,
+        inviterEmail,
+      }).then((mailResult) => {
+        if (!mailResult.sent) {
+          console.warn(`[Collaborator Email] Notification not delivered to ${normalizedEmail}: ${mailResult.reason}`);
+        } else {
+          console.log(`[Collaborator Email] Invitation successfully sent to ${normalizedEmail} via ${mailResult.provider}`);
+        }
+      }).catch((err) => {
+        console.error("[Collaborator Email] Error sending invite:", err.message);
+      });
+    }
 
+    broadcastFormEvent(formId, "collaborators_updated", form.collaborators);
     res.json(form.collaborators);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -934,6 +931,7 @@ export async function handleRemoveCollaborator(req, res) {
     );
 
     await form.save();
+    broadcastFormEvent(formId, "collaborators_updated", form.collaborators);
     res.json(form.collaborators);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -1007,6 +1005,91 @@ export async function handleGetSharedResponses(req, res) {
       },
       responses,
     });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
+// SSE Stream for Real-time Collaboration (Presence, active cursors, live edits)
+export async function handleCollaborationStream(req, res) {
+  try {
+    const { id: formId } = req.params;
+    if (!isValidObjectId(formId)) {
+      return res.status(400).json({ message: "Invalid form ID" });
+    }
+
+    const form = await Form.findById(formId);
+    if (!form) {
+      return res.status(404).json({ message: "Form not found" });
+    }
+
+    const access = getUserFormAccess(form, req);
+    if (!access) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const clientId = String(req.query.clientId || crypto.randomUUID());
+    const email = getSessionEmail(req);
+    const name = req.user?.name || email?.split("@")[0] || "Collaborator";
+    const userId = req.user?.id || req.user?.sub || email || clientId;
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders?.();
+
+    // Register stream connection
+    registerCollaboratorStream(
+      formId,
+      {
+        clientId,
+        userId,
+        name,
+        email,
+        role: access.role,
+      },
+      res
+    );
+
+    // Keepalive ping interval
+    const pingInterval = setInterval(() => {
+      try {
+        res.write(":ping\n\n");
+      } catch {
+        clearInterval(pingInterval);
+      }
+    }, 15000);
+
+    res.on("close", () => {
+      clearInterval(pingInterval);
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
+// Update cursor / active cell presence
+export async function handleUpdatePresence(req, res) {
+  try {
+    const { id: formId } = req.params;
+    const { clientId, activeCell } = sanitize(req.body);
+    if (!isValidObjectId(formId) || !clientId) {
+      return res.status(400).json({ message: "Invalid payload" });
+    }
+
+    const form = await Form.findById(formId);
+    if (!form) {
+      return res.status(404).json({ message: "Form not found" });
+    }
+
+    const access = getUserFormAccess(form, req);
+    if (!access) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    updateCollaboratorPresence(formId, clientId, activeCell);
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -19,6 +19,7 @@ import {
   SeparatorHorizontal,
   GitBranch,
   SlidersHorizontal,
+  Grid3X3,
 } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -55,6 +56,7 @@ const iconMap: Record<QuestionType, React.ElementType> = {
   number: Hash,
   file_upload: Upload,
   section_break: SeparatorHorizontal,
+  multiple_choice_grid: Grid3X3,
 };
 
 interface QuestionCardProps {
@@ -141,6 +143,24 @@ export function QuestionCard({
     onUpdate({
       options: question.options?.filter((opt) => opt.id !== optionId),
     });
+  };
+
+  const handleAddGridRow = () => {
+    const currentRows = question.gridRows || ["Row 1", "Row 2"];
+    onUpdate({
+      gridRows: [...currentRows, `Row ${currentRows.length + 1}`],
+    });
+  };
+
+  const handleUpdateGridRow = (index: number, value: string) => {
+    const currentRows = [...(question.gridRows || ["Row 1", "Row 2"])];
+    currentRows[index] = value;
+    onUpdate({ gridRows: currentRows });
+  };
+
+  const handleDeleteGridRow = (index: number) => {
+    const currentRows = (question.gridRows || ["Row 1", "Row 2"]).filter((_, i) => i !== index);
+    onUpdate({ gridRows: currentRows });
   };
 
   const handleAddCondition = () => {
@@ -531,6 +551,134 @@ export function QuestionCard({
                 <p className="mt-1.5 text-sm text-accent-5 font-medium">
                   File Upload Field (Respondents can attach files)
                 </p>
+              </div>
+            )}
+
+            {question.type === "multiple_choice_grid" && (
+              <div className="space-y-4 pt-1 font-sans">
+                {/* 2-Column Side-by-Side Builder for Rows and Columns */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Rows Section */}
+                  <div className="rounded-sm border border-border bg-accent-1/30 p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-semibold text-foreground flex items-center gap-1.5 font-sans">
+                        <span>Rows (Statements / Prompts)</span>
+                      </Label>
+                      <span className="text-xs text-accent-5">{(question.gridRows || []).length} rows</span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {(question.gridRows || ["Row 1", "Row 2"]).map((row, rIdx) => (
+                        <div key={rIdx} className="group/row flex items-center gap-2">
+                          <span className="text-xs font-mono text-accent-4 w-5 text-right shrink-0">{rIdx + 1}.</span>
+                          <Input
+                            value={row}
+                            onChange={(e) => handleUpdateGridRow(rIdx, e.target.value)}
+                            className="h-8 border-border bg-background text-sm font-medium text-foreground hover:border-accent-8 focus:border-accent-8 font-sans"
+                            placeholder={`Row ${rIdx + 1}`}
+                          />
+                          {(question.gridRows || []).length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteGridRow(rIdx)}
+                              className="p-1 text-accent-4 hover:text-red-400 opacity-60 group-hover/row:opacity-100 transition-opacity cursor-pointer shrink-0"
+                              title="Remove row"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+
+                      <button
+                        type="button"
+                        onClick={handleAddGridRow}
+                        className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-5 hover:text-foreground pt-1 cursor-pointer font-sans"
+                      >
+                        <Plus className="h-3.5 w-3.5 text-geist-success" />
+                        Add row
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Columns Section */}
+                  <div className="rounded-sm border border-border bg-accent-1/30 p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-semibold text-foreground flex items-center gap-1.5 font-sans">
+                        <span>Columns (Choices / Scale)</span>
+                      </Label>
+                      <span className="text-xs text-accent-5">{(question.options || []).length} columns</span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {(question.options || []).map((col, cIdx) => (
+                        <div key={col.id} className="group/col flex items-center gap-2">
+                          <CircleDot className="h-3.5 w-3.5 text-accent-4 shrink-0" />
+                          <Input
+                            value={col.label}
+                            onChange={(e) => handleUpdateOption(col.id, e.target.value)}
+                            className="h-8 border-border bg-background text-sm font-medium text-foreground hover:border-accent-8 focus:border-accent-8 font-sans"
+                            placeholder={`Column ${cIdx + 1}`}
+                          />
+                          {(question.options || []).length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteOption(col.id)}
+                              className="p-1 text-accent-4 hover:text-red-400 opacity-60 group-hover/col:opacity-100 transition-opacity cursor-pointer shrink-0"
+                              title="Remove column"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+
+                      <button
+                        type="button"
+                        onClick={handleAddOption}
+                        className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-5 hover:text-foreground pt-1 cursor-pointer font-sans"
+                      >
+                        <Plus className="h-3.5 w-3.5 text-geist-success" />
+                        Add column
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Grid Live Preview */}
+                <div className="rounded-sm border border-border bg-background p-3.5 overflow-x-auto hide-scrollbar w-full">
+                  <p className="text-xs font-semibold text-accent-5 uppercase tracking-wider mb-2.5 font-sans">
+                    Grid Preview
+                  </p>
+                  <table className="w-full border-collapse text-left text-sm font-sans min-w-full">
+                    <thead>
+                      <tr className="border-b border-border/80 bg-accent-1/20">
+                        <th className="sticky left-0 z-10 bg-background py-2 px-3 font-medium text-accent-5 text-xs min-w-[130px] sm:min-w-[160px] border-r border-border/80 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.6)]">
+                          Criteria / Prompts
+                        </th>
+                        {(question.options || []).map((col) => (
+                          <th key={col.id} className="py-2 px-3 text-center font-medium text-foreground text-xs min-w-[80px] sm:min-w-[100px] border-l border-border/40 whitespace-nowrap">
+                            {col.label || "Untitled"}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/50">
+                      {(question.gridRows || ["Row 1", "Row 2"]).map((row, rIdx) => (
+                        <tr key={rIdx} className="group/row hover:bg-accent-1/20 transition-colors">
+                          <td className="sticky left-0 z-10 bg-background group-hover/row:bg-accent-1/20 py-2.5 px-3 text-foreground font-medium text-xs min-w-[130px] sm:min-w-[160px] border-r border-border/80 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.6)] transition-colors truncate">
+                            {row || `Row ${rIdx + 1}`}
+                          </td>
+                          {(question.options || []).map((col) => (
+                            <td key={col.id} className="py-2.5 px-3 text-center border-l border-border/40 min-w-[80px] sm:min-w-[100px]">
+                              <div className="h-4 w-4 rounded-full border border-border/80 mx-auto" />
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
             {/* Conditioning & Logic Rules Panel */}

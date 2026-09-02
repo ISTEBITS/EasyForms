@@ -214,6 +214,25 @@ export const ResponseDetailDrawer: React.FC<ResponseDetailDrawerProps> = ({
                         <FileText className="h-3.5 w-3.5 text-accent-6" />
                         <span>Download / View Attachment</span>
                       </a>
+                    ) : question.type === "multiple_choice_grid" && typeof rawVal === "object" && rawVal !== null ? (
+                      <div className="rounded-sm border border-border/60 bg-accent-1/20 overflow-hidden mt-1 font-sans">
+                        <table className="w-full text-xs text-left font-sans">
+                          <thead className="bg-accent-1/50 border-b border-border/40 text-accent-5">
+                            <tr>
+                              <th className="py-1 px-2.5 font-medium">Criteria</th>
+                              <th className="py-1 px-2.5 font-medium text-right">Selection</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border/30">
+                            {Object.entries(rawVal as Record<string, string>).map(([row, col]) => (
+                              <tr key={row}>
+                                <td className="py-1.5 px-2.5 text-accent-6">{row}</td>
+                                <td className="py-1.5 px-2.5 text-foreground font-medium text-right">{col}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     ) : (
                       <p className={`text-xs ${rawVal ? "text-foreground font-medium" : "text-accent-4 italic font-sans"}`}>
                         {displayVal}

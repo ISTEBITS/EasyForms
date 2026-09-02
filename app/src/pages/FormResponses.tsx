@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { ApiError, formsApi } from "@/api";
@@ -17,9 +17,11 @@ import {
   normalizeDashboardScope,
 } from "@/lib/dashboard-scope";
 import { ResponsesSkeleton } from "@/components/ui/skeleton-new";
+import { useFormCollaboration } from "@/hooks/useFormCollaboration";
 import {
   ResponsesHeader,
   type ViewMode,
+  type SaveStatus,
   ResponsesSheetGrid,
   ResponseDetailDrawer,
   ResponsesSummaryAnalytics,
@@ -38,9 +40,7 @@ export const FormResponses = () => {
     searchParams.get(DASHBOARD_SCOPE_PARAM),
   );
   const scopeSearch =
-    isAdmin && selectedScope.startsWith("test:")
-      ? `?${DASHBOARD_SCOPE_PARAM}=${encodeURIComponent(selectedScope)}`
-      : "";
+    selectedScope === "all" ? `?${DASHBOARD_SCOPE_PARAM}=all` : "";
 
   const [form, setForm] = useState<Form | null>(null);
   const [responses, setResponses] = useState<FormResponse[]>([]);
@@ -48,12 +48,69 @@ export const FormResponses = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // View state
+  // View Mode: Sheet or Analytics
   const [viewMode, setViewMode] = useState<ViewMode>("sheet");
+
+  // Filtering & Sorting
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ResponseStatus | "all">("all");
   const [sortColumn, setSortColumn] = useState<string | null>("submittedAt");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+
+  // Google Sheets Auto-Saving Status
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const triggerSavedStatus = () => {
+    setSaveStatus("saved");
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      setSaveStatus("idle");
+    }, 3000);
+  };
+
+  // Real-time collaboration hook
+  const { collaborators: onlineCollaborators, remoteCursors, updatePresence, clientId } = useFormCollaboration({
+    formId: id,
+    onResponseUpdated: (updatedResponse) => {
+      setResponses((prev) =>
+        prev.map((r) =>
+          (r.id === updatedResponse.id || r._id === updatedResponse._id || r.id === updatedResponse._id || r._id === updatedResponse.id)
+            ? updatedResponse
+            : r
+        )
+      );
+    },
+    onResponseCreated: (newResponse) => {
+      setResponses((prev) => {
+        const exists = prev.some(
+          (r) => r.id === newResponse.id || r._id === newResponse._id || r.id === newResponse._id || r._id === newResponse.id
+        );
+        if (exists) return prev;
+        return [...prev, newResponse];
+      });
+    },
+    onResponseDeleted: (deletedId) => {
+      setResponses((prev) => prev.filter((r) => r.id !== deletedId && r._id !== deletedId));
+    },
+    onBulkResponsesDeleted: (deletedIds) => {
+      const idSet = new Set(deletedIds);
+      setResponses((prev) => prev.filter((r) => !idSet.has(r.id || "") && !idSet.has(r._id || "")));
+    },
+    onBulkStatusUpdated: (updatedIds, status) => {
+      const idSet = new Set(updatedIds);
+      setResponses((prev) =>
+        prev.map((r) =>
+          idSet.has(r.id || "") || idSet.has(r._id || "")
+            ? { ...r, status, updatedAt: new Date().toISOString() }
+            : r
+        )
+      );
+    },
+    onFormUpdated: (updatedForm) => {
+      setForm((prev) => (prev ? { ...prev, ...updatedForm } : updatedForm));
+    },
+  });
 
   // Selection state
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
@@ -201,21 +258,26 @@ export const FormResponses = () => {
     }
   };
 
-  // Cell Update
+  // Cell Update (Google Sheets-style silent auto-saving)
   const handleUpdateCell = async (responseId: string, questionId: string, value: unknown) => {
     if (!form) return;
+    setSaveStatus("saving");
     try {
       const currentResponse = responses.find((r) => (r.id || r._id) === responseId);
-      if (!currentResponse) return;
+      if (!currentResponse) {
+        setSaveStatus("idle");
+        return;
+      }
 
       if (questionId === "__email__") {
         const updated = await formsApi.updateResponse(form.id, responseId, {
           respondentEmail: String(value || "").trim(),
+          clientId,
         });
         setResponses((prev) =>
           prev.map((r) => ((r.id || r._id) === responseId ? updated : r))
         );
-        toast.success("Cell updated");
+        triggerSavedStatus();
         return;
       }
 
@@ -233,30 +295,34 @@ export const FormResponses = () => {
 
       const updated = await formsApi.updateResponse(form.id, responseId, {
         answers: existingAnswers,
+        clientId,
       });
 
       setResponses((prev) =>
         prev.map((r) => ((r.id || r._id) === responseId ? updated : r))
       );
-      toast.success("Cell updated");
+      triggerSavedStatus();
     } catch {
-      toast.error("Failed to update cell");
+      setSaveStatus("error");
+      toast.error("Failed to save cell change");
     }
   };
 
   // Status Update
   const handleUpdateStatus = async (responseId: string, status: ResponseStatus) => {
     if (!form) return;
+    setSaveStatus("saving");
     try {
-      const updated = await formsApi.updateResponse(form.id, responseId, { status });
+      const updated = await formsApi.updateResponse(form.id, responseId, { status, clientId });
       setResponses((prev) =>
         prev.map((r) => ((r.id || r._id) === responseId ? updated : r))
       );
       if (selectedDetailResponse && (selectedDetailResponse.id || selectedDetailResponse._id) === responseId) {
         setSelectedDetailResponse(updated);
       }
-      toast.success(`Status set to ${status}`);
+      triggerSavedStatus();
     } catch {
+      setSaveStatus("error");
       toast.error("Failed to update status");
     }
   };
@@ -310,7 +376,7 @@ export const FormResponses = () => {
   const handleAddNote = async (responseId: string, noteText: string) => {
     if (!form) return;
     try {
-      const updated = await formsApi.updateResponse(form.id, responseId, { newNote: noteText });
+      const updated = await formsApi.updateResponse(form.id, responseId, { newNote: noteText, clientId });
       setResponses((prev) =>
         prev.map((r) => ((r.id || r._id) === responseId ? updated : r))
       );
@@ -321,7 +387,7 @@ export const FormResponses = () => {
     }
   };
 
-  // Manual Row Insert
+  // Manual Row Insert (Appends row to bottom of spreadsheet)
   const handleManualCreateResponse = async (data: {
     answers: Answer[];
     respondentEmail?: string;
@@ -329,12 +395,25 @@ export const FormResponses = () => {
     status: ResponseStatus;
   }) => {
     if (!form) return;
+    setSaveStatus("saving");
     try {
-      const newResp = await formsApi.manualCreateResponse(form.id, data);
-      setResponses((prev) => [newResp, ...prev]);
-      toast.success("New response row added");
+      const newResp = await formsApi.manualCreateResponse(form.id, {
+        ...data,
+        clientId,
+      });
+      setResponses((prev) => {
+        const incomingId = String(newResp.id || newResp._id || "");
+        const exists = prev.some((r) => String(r.id || r._id || "") === incomingId);
+        if (exists) return prev;
+        return [...prev, newResp];
+      });
+      setForm((prev) =>
+        prev ? { ...prev, responseCount: (prev.responseCount || 0) + 1 } : null
+      );
+      triggerSavedStatus();
       return newResp;
     } catch {
+      setSaveStatus("error");
       toast.error("Failed to create response");
     }
   };
@@ -355,10 +434,11 @@ export const FormResponses = () => {
   };
 
   // Collaborator Management
-  const handleAddCollaborator = async (email: string, role: CollaboratorRole) => {
+  const handleAddCollaborator = async (email: string, role: CollaboratorRole, sendEmail: boolean = true) => {
     if (!form) return;
-    const updatedCollaborators = await formsApi.addCollaborator(form.id, email, role);
+    const updatedCollaborators = await formsApi.addCollaborator(form.id, email, role, sendEmail);
     setForm((prev) => prev ? { ...prev, collaborators: updatedCollaborators } : null);
+    toast.success(sendEmail ? `Collaborator invite sent to ${email}` : `Collaborator ${email} added`);
   };
 
   const handleRemoveCollaborator = async (collaboratorId: string) => {
@@ -476,6 +556,12 @@ export const FormResponses = () => {
         isRefreshing={refreshing}
         onBack={() => navigate(`/dashboard${scopeSearch}`)}
         collaboratorCount={form.collaborators?.length || 0}
+        saveStatus={saveStatus}
+        currentUserAccess={form.currentUserAccess}
+        onlineCollaborators={onlineCollaborators}
+        currentClientId={clientId}
+        currentUserEmail={user?.email}
+        currentUserId={user?.sub}
       />
 
       {/* Main View Area */}
@@ -498,6 +584,9 @@ export const FormResponses = () => {
             onSort={handleSort}
             onAddRow={() => setIsManualModalOpen(true)}
             onCreateRow={handleManualCreateResponse}
+            canEdit={form.currentUserAccess ? form.currentUserAccess.canEdit : true}
+            remoteCursors={remoteCursors}
+            onActiveCellChange={updatePresence}
           />
         ) : (
           <ResponsesSummaryAnalytics

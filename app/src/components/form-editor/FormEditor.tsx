@@ -128,6 +128,7 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
   const { forms, updateForm } = useForms();
   const { user } = useAuth();
   const isTestUser = user?.role === "test_user";
+  const isViewer = initialForm.currentUserAccess ? !initialForm.currentUserAccess.canEdit : false;
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -146,13 +147,14 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
 
   const updateFormState = useCallback(
     (updater: (prev: Form) => Form) => {
+      if (isViewer) return;
       setForm((prev) => {
         const next = updater(prev);
         setIsDirty(true);
         return next;
       });
     },
-    [],
+    [isViewer],
   );
 
   const handleDragEnd = useCallback(
@@ -195,6 +197,14 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
             type === "section_break" ? false : DEFAULT_QUESTION.required,
         };
         if (type === "rating") newQuestion.maxRating = 5;
+        if (type === "multiple_choice_grid") {
+          newQuestion.gridRows = ["Row 1", "Row 2", "Row 3"];
+          newQuestion.options = [
+            { id: generateId(), label: "Column 1", value: "Column 1" },
+            { id: generateId(), label: "Column 2", value: "Column 2" },
+            { id: generateId(), label: "Column 3", value: "Column 3" },
+          ];
+        }
 
         return {
           ...prev,
@@ -459,27 +469,36 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
             <div className="flex items-center gap-2 min-w-0 flex-1">
               <Input
                 value={form.title}
+                disabled={isViewer}
                 onChange={(e) =>
                   updateFormState((prev) => ({ ...prev, title: e.target.value }))
                 }
-                className="h-8 border-0 border-b border-transparent bg-transparent px-1 font-semibold text-xs sm:text-base text-foreground hover:border-border focus:border-accent-8 focus:ring-0 placeholder:text-accent-4 max-w-sm truncate"
+                className="h-8 border-0 border-b border-transparent bg-transparent px-1 font-semibold text-xs sm:text-base text-foreground hover:border-border focus:border-accent-8 focus:ring-0 placeholder:text-accent-4 max-w-sm truncate disabled:opacity-80"
                 placeholder="Untitled Form"
               />
 
-              {/* Status Indicator */}
-              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent-1/60 border border-border text-xs font-mono text-accent-5 flex-shrink-0">
-                <div
-                  className={`h-2 w-2 rounded-full ${isSaving
-                      ? "bg-accent-4 animate-pulse"
-                      : isDirty
-                        ? "bg-amber-500"
-                        : "bg-emerald-500"
-                    }`}
-                />
-                <span>
-                  {isSaving ? "Saving..." : isDirty ? "Unsaved" : "Saved"}
+              {/* View Only Badge for Viewers */}
+              {isViewer ? (
+                <span className="inline-flex items-center gap-1 rounded-sm border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-500 font-sans shrink-0">
+                  <Eye className="h-3 w-3" />
+                  <span>View only</span>
                 </span>
-              </div>
+              ) : (
+                /* Status Indicator */
+                <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent-1/60 border border-border text-xs font-mono text-accent-5 flex-shrink-0">
+                  <div
+                    className={`h-2 w-2 rounded-full ${isSaving
+                        ? "bg-accent-4 animate-pulse"
+                        : isDirty
+                          ? "bg-amber-500"
+                          : "bg-emerald-500"
+                      }`}
+                  />
+                  <span>
+                    {isSaving ? "Saving..." : isDirty ? "Unsaved" : "Saved"}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -496,6 +515,7 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
               </span>
               <Switch
                 checked={form.isPublished}
+                disabled={isViewer}
                 onCheckedChange={(checked) =>
                   updateFormState((prev) => ({ ...prev, isPublished: checked }))
                 }
@@ -553,25 +573,27 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
             </div>
 
             {/* Save Button */}
-            <Button
-              onClick={handleSave}
-              size="sm"
-              disabled={isSaving}
-              variant="default"
-              className="h-8 rounded-xs font-medium text-xs px-2.5 sm:px-4"
-            >
-              {isSaving ? (
-                <>
-                  <Loader className="h-3.5 w-3.5 sm:mr-1.5 animate-spin" />
-                  <span className="hidden sm:inline">Saving</span>
-                </>
-              ) : (
-                <>
-                  <Save className="h-3.5 w-3.5 sm:mr-1.5" />
-                  <span className="hidden sm:inline">Save</span>
-                </>
-              )}
-            </Button>
+            {!isViewer && (
+              <Button
+                onClick={handleSave}
+                size="sm"
+                disabled={isSaving}
+                variant="default"
+                className="h-8 rounded-xs font-medium text-xs px-2.5 sm:px-4"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader className="h-3.5 w-3.5 sm:mr-1.5 animate-spin" />
+                    <span className="hidden sm:inline">Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-3.5 w-3.5 sm:mr-1.5" />
+                    <span className="hidden sm:inline">Save</span>
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </div>
       </header>

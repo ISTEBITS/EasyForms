@@ -27,6 +27,8 @@ import {
   handleRemoveCollaborator,
   handleUpdateShareSettings,
   handleGetSharedResponses,
+  handleCollaborationStream,
+  handleUpdatePresence,
 } from "../controllers/form.controllers.js";
 
 const router = express.Router();
@@ -82,6 +84,10 @@ router.delete("/:id/responses/:responseId", checkCookies, handleDeleteSingleResp
 router.post("/:id/collaborators", checkCookies, handleAddCollaborator);
 router.delete("/:id/collaborators/:collaboratorId", checkCookies, handleRemoveCollaborator);
 router.patch("/:id/share-settings", checkCookies, handleUpdateShareSettings);
+
+// Real-Time Collaboration (SSE stream & Presence heartbeats)
+router.get("/:id/collaboration-stream", checkCookies, handleCollaborationStream);
+router.post("/:id/presence", checkCookies, handleUpdatePresence);
 
 //Submit a response (public, rate-limited, optional API key auth)
 router.post("/:id/responses", submitLimiter, checkApiKeyOptional, handleSubmitAResponse);

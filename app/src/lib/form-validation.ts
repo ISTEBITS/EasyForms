@@ -20,6 +20,7 @@ function isEmptyValue(value: unknown): boolean {
   if (value === undefined || value === null) return true;
   if (typeof value === "string") return value.trim() === "";
   if (Array.isArray(value)) return value.length === 0;
+  if (typeof value === "object") return Object.keys(value as object).length === 0;
   return false;
 }
 
@@ -117,6 +118,22 @@ export function validateQuestionAnswer(
     case "file_upload": {
       if (typeof value !== "string" || value.trim() === "") {
         return "Please upload a file";
+      }
+      return null;
+    }
+    case "multiple_choice_grid": {
+      if (typeof value !== "object" || value === null || Array.isArray(value)) {
+        return "Invalid grid response";
+      }
+      const gridMap = value as Record<string, string>;
+      const rows = question.gridRows || [];
+      const options = getOptionValues(question);
+
+      if (question.required) {
+        const missingRow = rows.find((r) => !gridMap[r] || !options.has(gridMap[r]));
+        if (missingRow) {
+          return `Please select an option for "${missingRow}"`;
+        }
       }
       return null;
     }
