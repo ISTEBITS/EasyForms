@@ -233,7 +233,7 @@ export function FormPreview({
             </div>
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               onClick={handleSwitchAccount}
               size="xs"
               className="rounded-sm text-sm font-sans shrink-0 h-7 border-border cursor-pointer"
@@ -283,7 +283,7 @@ export function FormPreview({
           <div className="flex items-center justify-between gap-3 pt-4 border-t border-border mt-8 font-sans">
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               onClick={() =>
                 setActivePageIndex((prev) => Math.max(prev - 1, 0))
               }
