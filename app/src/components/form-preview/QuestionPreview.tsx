@@ -376,6 +376,92 @@ export function QuestionPreview({
             )}
           </div>
         )}
+
+        {question.type === "multiple_choice_grid" && (
+          <div className="space-y-4 pt-1 font-sans">
+            {/* Universal Grid Matrix Table with Sticky Criteria Column & Scrollable Choices */}
+            <div className="overflow-x-auto rounded-sm border border-[#262626] bg-[#0c0c0c] shadow-xs hide-scrollbar w-full">
+              <table className="w-full border-collapse text-left text-sm font-sans min-w-full">
+                <thead>
+                  <tr className="border-b border-border bg-accent-1/40">
+                    <th className="sticky left-0 z-20 bg-[#0c0c0c] py-3 px-4 font-medium text-accent-5 text-sm min-w-[140px] sm:min-w-[200px] max-w-[240px] border-r border-[#262626] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.6)]">
+                      Criteria
+                    </th>
+                    {(question.options || []).map((col) => (
+                      <th
+                        key={col.id}
+                        className="py-3 px-4 text-center font-medium text-foreground text-sm border-l border-border/40 min-w-[90px] sm:min-w-[110px] whitespace-nowrap"
+                      >
+                        {col.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/40">
+                  {(() => {
+                    const gridVal: Record<string, string> =
+                      typeof value === "object" &&
+                      value !== null &&
+                      !(value instanceof File) &&
+                      !Array.isArray(value)
+                        ? (value as Record<string, string>)
+                        : {};
+
+                    return (question.gridRows || ["Row 1", "Row 2"]).map((rowName, rIdx) => {
+                      const selectedCol = gridVal[rowName];
+
+                      return (
+                        <tr
+                          key={rIdx}
+                          className="group/row hover:bg-accent-1/30 transition-colors"
+                          role="radiogroup"
+                          aria-label={rowName}
+                        >
+                          <td className="sticky left-0 z-10 bg-[#0c0c0c] group-hover/row:bg-[#141414] py-3 px-4 font-medium text-foreground text-sm min-w-[140px] sm:min-w-[200px] max-w-[240px] border-r border-[#262626] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.6)] transition-colors">
+                            <span className="line-clamp-2">{rowName}</span>
+                          </td>
+                          {(question.options || []).map((col) => {
+                            const isSelected = selectedCol === col.value;
+
+                            return (
+                              <td
+                                key={col.id}
+                                onClick={() => {
+                                  onChange({ ...gridVal, [rowName]: col.value });
+                                }}
+                                className="p-0 text-center border-l border-border/40 min-w-[90px] sm:min-w-[110px] cursor-pointer hover:bg-accent-1/60 transition-colors"
+                              >
+                                <div className="flex items-center justify-center w-full h-full min-h-[44px] py-3 px-4">
+                                  <RadioGroup
+                                    value={selectedCol || ""}
+                                    onValueChange={(val) => {
+                                      if (val) onChange({ ...gridVal, [rowName]: String(val) });
+                                    }}
+                                    className="flex items-center justify-center w-auto gap-0"
+                                  >
+                                    <RadioGroupItem
+                                      value={col.value}
+                                      id={`grid-${question.id}-${rIdx}-${col.id}`}
+                                      aria-label={`${rowName}, ${col.label}`}
+                                      className={cn(
+                                        "border-[#444] text-foreground focus:ring-0 focus:outline-none",
+                                        isSelected && "bg-foreground text-foreground"
+                                      )}
+                                    />
+                                  </RadioGroup>
+                                </div>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    });
+                  })()}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

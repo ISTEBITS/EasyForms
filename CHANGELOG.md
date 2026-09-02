@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 This project follows **Semantic Versioning (SemVer)**:  
 MAJOR.MINOR.PATCH (e.g., 2.1.0)
 
+## [2.4.0] - 2026-09-03
+
+### Added & Enhanced (App & Server)
+- **Multiple Choice Grid Question Type**:
+  - Added Google Forms-style Multiple Choice Grid (`multiple_choice_grid`) supporting custom criteria rows and choice columns.
+  - Mobile-responsive matrix layout with fixed criteria headers and smooth horizontal scrolling for overflow columns.
+  - Uses accessible radio group components (`app/src/components/ui/radio-group.tsx`) without page-shift regressions.
+  - Editor configuration panel for dynamic row/column management and response sheet rendering.
+- **Google Sheets-Style Real-Time Collaboration & Cursors**:
+  - Server-Sent Events (SSE) live collaboration stream (`/api/forms/:id/collaboration-stream`) and presence heartbeats (`/api/forms/:id/presence`).
+  - Active collaborator avatar stack in header with user identity deduplication (1 avatar per user across multiple tabs/windows) and `(You)` tag for self.
+  - Real-time colored cell border outlines and floating collaborator name tags on responses and empty placeholder rows.
+  - Immediate cursor clearing on cell unfocus, document click-outside, tab switching, and `Escape`.
+- **Role-Based Access Control (RBAC) Enforcement**:
+  - Strict server and UI permission enforcement for `viewer`, `editor`, and `owner`/`admin` roles across all form and response endpoints.
+  - View-only mode for viewers: disables form editing, inline cell editing, row deletion, and collaborator management with a "View only" badge.
+  - Editors can modify form fields and responses but cannot delete the form or manage collaborators.
+- **Silent Auto-Saving & Sheet Performance Optimization**:
+  - Implemented Google Sheets-style silent auto-saving with header status indicators (`Saving...`, `All changes saved to cloud`).
+  - Removed disruptive toast notifications for routine cell blur/focus events.
+  - Value diffing: updates to backend are skipped if cell content has not changed.
+  - Chronological response ordering with natural bottom-stacking.
+  - Cell height growth along Y-axis to prevent text truncation.
+- **Optional Collaborator Invitation Email**:
+  - Added checkbox toggle in the collaborator share modal to send or skip email notification invites.
+
+### Fixed
+- Fixed race condition causing duplicate response rows when editing empty placeholder rows.
+- Fixed SSE stream connection URL routing to backend `API_BASE_URL`.
+- Fixed missing `formId` parameter scoping in collaborator controller.
+
+---
+
 ## [2.3.0] - 2026-09-02
 
 ### Added & Enhanced (App & Server)

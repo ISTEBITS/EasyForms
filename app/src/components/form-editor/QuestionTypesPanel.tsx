@@ -12,6 +12,7 @@ import {
   Upload,
   SeparatorHorizontal,
   Search,
+  Grid3X3,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { QUESTION_TYPE_LABELS, type QuestionType } from "@/types/form";
@@ -28,6 +29,7 @@ const iconMap: Record<QuestionType, React.ElementType> = {
   number: Hash,
   file_upload: Upload,
   section_break: SeparatorHorizontal,
+  multiple_choice_grid: Grid3X3,
 };
 
 const allTypes: { type: QuestionType; customLabel?: string }[] = [
@@ -42,6 +44,7 @@ const allTypes: { type: QuestionType; customLabel?: string }[] = [
   { type: "dropdown", customLabel: "Select List" },
   { type: "file_upload", customLabel: "File Upload" },
   { type: "rating", customLabel: "Rating" },
+  { type: "multiple_choice_grid", customLabel: "Multiple Choice Grid" },
 ];
 
 interface QuestionTypesPanelProps {

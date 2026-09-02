@@ -11,7 +11,7 @@ import {
   Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { FormResponse, Question, ResponseStatus, Answer } from "@/types/form";
+import type { FormResponse, Question, ResponseStatus, Answer, CollaboratorPresence } from "@/types/form";
 import {
   StatusManagerModal,
   DEFAULT_STATUS_OPTIONS,
@@ -40,6 +40,9 @@ interface ResponsesSheetGridProps {
     respondentEmail?: string;
     status: ResponseStatus;
   }) => Promise<FormResponse | undefined>;
+  canEdit?: boolean;
+  remoteCursors?: Record<string, CollaboratorPresence>;
+  onActiveCellChange?: (cell: { rowKey: string; rowIndex: number; colIndex: number; questionId?: string } | null) => void;
 }
 
 export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
@@ -58,6 +61,9 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
   sortDirection,
   onSort,
   onCreateRow,
+  canEdit = true,
+  remoteCursors = {},
+  onActiveCellChange,
 }) => {
   // Status Options with persistence
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>(() => {
@@ -78,20 +84,22 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
     rowIndex: number;
     colIndex: number; // 0 for email, 1..N for questions
     isNewRow: boolean;
+    initialValue: string;
   } | null>(null);
 
   const [editValue, setEditValue] = useState<string>("");
   const [activeCell, setActiveCell] = useState<{ rowIndex: number; colIndex: number } | null>(null);
   const [statusDropdownOpen, setStatusDropdownOpen] = useState<string | null>(null);
   const [activeMenuRowId, setActiveMenuRowId] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+  const gridContainerRef = useRef<HTMLDivElement>(null);
 
   const allSelected = responses.length > 0 && selectedRowIds.length === responses.length;
   const isPartiallySelected = selectedRowIds.length > 0 && !allSelected;
 
-  // Minimum grid rows to emulate full Google Sheets / Excel experience
+  // Minimum grid rows to emulate full Google Sheets / Excel experience (only for editors)
   const minGridRows = Math.max(25, responses.length + 8);
-  const emptyRowsCount = Math.max(0, minGridRows - responses.length);
+  const emptyRowsCount = canEdit ? Math.max(0, minGridRows - responses.length) : 0;
 
   // Column definitions for cell navigation: [Email, ...questions]
   const columnCount = 1 + questions.length;
@@ -102,6 +110,29 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
       inputRef.current.select();
     }
   }, [editingCell]);
+
+  // Click outside and window blur listener to clear active cursor presence
+  useEffect(() => {
+    const handleDocumentMouseDown = (e: MouseEvent) => {
+      if (gridContainerRef.current && !gridContainerRef.current.contains(e.target as Node)) {
+        setActiveCell(null);
+        setEditingCell(null);
+        onActiveCellChange?.(null);
+      }
+    };
+
+    const handleWindowBlur = () => {
+      onActiveCellChange?.(null);
+    };
+
+    document.addEventListener("mousedown", handleDocumentMouseDown);
+    window.addEventListener("blur", handleWindowBlur);
+
+    return () => {
+      document.removeEventListener("mousedown", handleDocumentMouseDown);
+      window.removeEventListener("blur", handleWindowBlur);
+    };
+  }, [onActiveCellChange]);
 
   const handleSaveStatusOptions = (newOptions: StatusOption[]) => {
     setStatusOptions(newOptions);
@@ -143,6 +174,7 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
   // Start editing a specific cell
   const startEditingCell = useCallback(
     (rowKey: string, questionId: string, initialVal: string, rowIndex: number, colIndex: number, isNewRow: boolean) => {
+      if (!canEdit) return;
       setEditValue(initialVal);
       setEditingCell({
         rowKey,
@@ -150,17 +182,32 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
         rowIndex,
         colIndex,
         isNewRow,
+        initialValue: initialVal,
       });
       setActiveCell({ rowIndex, colIndex });
+      onActiveCellChange?.({ rowKey, rowIndex, colIndex, questionId });
     },
-    []
+    [canEdit, onActiveCellChange]
+  );
+
+  const handleSelectActiveCell = useCallback(
+    (rowKey: string, questionId: string, rowIndex: number, colIndex: number) => {
+      setActiveCell({ rowIndex, colIndex });
+      onActiveCellChange?.({ rowKey, rowIndex, colIndex, questionId });
+    },
+    [onActiveCellChange]
   );
 
   // Commit and save cell edit
   const handleSaveCell = async (nextMove?: "down" | "right" | "left") => {
     if (!editingCell) return;
-    const { rowKey, questionId, rowIndex, colIndex, isNewRow } = editingCell;
-    const trimmedVal = editValue.trim();
+    const cellToSave = editingCell;
+    const { rowKey, questionId, rowIndex, colIndex, isNewRow, initialValue } = cellToSave;
+    const currentVal = editValue;
+    const trimmedVal = currentVal.trim();
+
+    // Clear editingCell immediately so onBlur does not trigger a duplicate save
+    setEditingCell(null);
 
     try {
       if (isNewRow) {
@@ -178,12 +225,11 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
             status: "unreviewed",
           });
         }
-      } else {
-        await onUpdateCell(rowKey, questionId, editValue);
+      } else if (currentVal !== initialValue) {
+        // Only trigger database call if the cell value actually changed
+        await onUpdateCell(rowKey, questionId, currentVal);
       }
     } finally {
-      setEditingCell(null);
-
       // Handle Google Sheet navigation (Tab / Enter)
       if (nextMove === "down") {
         const nextRowIndex = rowIndex + 1;
@@ -219,11 +265,15 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
     const ans = resp.answers?.find((a) => a.questionId === q.id);
     const raw = ans?.value;
     if (raw === undefined || raw === null) return "";
-    return Array.isArray(raw) ? raw.join(", ") : String(raw);
+    if (Array.isArray(raw)) return raw.join(", ");
+    if (typeof raw === "object") {
+      return Object.entries(raw as Record<string, string>).map(([k, v]) => `${k}: ${v}`).join("; ");
+    }
+    return String(raw);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       void handleSaveCell("down");
     } else if (e.key === "Tab") {
@@ -231,11 +281,13 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
       void handleSaveCell(e.shiftKey ? "left" : "right");
     } else if (e.key === "Escape") {
       setEditingCell(null);
+      setActiveCell(null);
+      onActiveCellChange?.(null);
     }
   };
 
   return (
-    <div className="relative space-y-2 font-sans">
+    <div ref={gridContainerRef} className="relative space-y-2 font-sans">
       {/* Floating Bulk Actions Bar */}
       {selectedRowIds.length > 0 && (
         <div className="sticky top-2 z-30 flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-foreground px-4 py-2 text-background shadow-lg transition-all animate-in fade-in slide-in-from-top-2">
@@ -343,7 +395,7 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                 {/* Respondent Email */}
                 <th
                   onClick={() => onSort("respondentEmail")}
-                  className="w-48 px-3 py-2 font-medium uppercase tracking-wider text-accent-5 border-r border-border/80 cursor-pointer hover:bg-accent-2/60 transition-colors"
+                  className="w-56 min-w-[180px] px-3 py-2 font-medium uppercase tracking-wider text-accent-5 border-r border-border/80 cursor-pointer hover:bg-accent-2/60 transition-colors"
                 >
                   <div className="flex items-center justify-between">
                     <span>Respondent</span>
@@ -358,11 +410,11 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                   <th
                     key={q.id}
                     onClick={() => onSort(q.id)}
-                    className="min-w-[180px] max-w-[260px] px-3.5 py-2 font-medium uppercase tracking-wider text-accent-5 border-r border-border/80 cursor-pointer hover:bg-accent-2/60 transition-colors"
+                    className="min-w-[180px] px-3.5 py-2 font-medium uppercase tracking-wider text-accent-5 border-r border-border/80 cursor-pointer hover:bg-accent-2/60 transition-colors"
                     title={q.title}
                   >
                     <div className="flex items-center justify-between gap-1.5">
-                      <span className="truncate">{q.title}</span>
+                      <span className="break-words font-sans">{q.title}</span>
                       {sortColumn === q.id && (
                         sortDirection === "asc" ? <ChevronUp className="h-3 w-3 shrink-0" /> : <ChevronDown className="h-3 w-3 shrink-0" />
                       )}
@@ -371,9 +423,11 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                 ))}
 
                 {/* Row Action Menu */}
-                <th className="w-12 px-2 py-2 text-center font-medium text-accent-5">
-                  Action
-                </th>
+                {canEdit && (
+                  <th className="w-12 px-2 py-2 text-center font-medium text-accent-5">
+                    Action
+                  </th>
+                )}
               </tr>
             </thead>
 
@@ -392,38 +446,44 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                 return (
                   <tr
                     key={rowId}
-                    className={`group transition-colors ${
-                      isSelected ? "bg-accent-1/90" : "hover:bg-accent-1/30"
-                    }`}
+                    className={`group transition-colors ${isSelected ? "bg-accent-1/90" : "hover:bg-accent-1/30"
+                      }`}
                   >
                     {/* Checkbox */}
-                    <td className="px-3 py-1.5 text-center border-r border-border/60">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={(e) => onSelectRow(rowId, e.target.checked)}
-                        className="h-3.5 w-3.5 rounded-xs border-border text-foreground accent-foreground cursor-pointer"
-                      />
+                    <td className="px-3 py-1.5 text-center border-r border-border/60 align-top">
+                      {canEdit ? (
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={(e) => onSelectRow(rowId, e.target.checked)}
+                          className="h-3.5 w-3.5 rounded-xs border-border text-foreground accent-foreground cursor-pointer"
+                        />
+                      ) : (
+                        <span className="text-accent-4/40 text-xs">—</span>
+                      )}
                     </td>
 
                     {/* Row Index # */}
-                    <td className="px-2 py-1.5 text-center font-sans text-xs text-accent-4 border-r border-border/60">
+                    <td className="px-2 py-1.5 text-center font-sans text-xs text-accent-4 border-r border-border/60 align-top">
                       {rowIndex + 1}
                     </td>
 
                     {/* Status Simple Dropdown-style Button (No icon) */}
-                    <td className="px-2 py-1 border-r border-border/60 relative">
+                    <td className="px-2 py-1 border-r border-border/60 relative align-top">
                       <div className="relative inline-block w-full">
                         <button
                           type="button"
-                          onClick={() => setStatusDropdownOpen(statusDropdownOpen === rowId ? null : rowId)}
-                          className={`inline-flex w-full items-center justify-between gap-1.5 rounded-sm border px-2 py-0.5 text-xs font-medium transition-all ${statusInfo.bg} hover:opacity-85 cursor-pointer`}
+                          disabled={!canEdit}
+                          onClick={() => {
+                            if (canEdit) setStatusDropdownOpen(statusDropdownOpen === rowId ? null : rowId);
+                          }}
+                          className={`inline-flex w-full items-center justify-between gap-1.5 rounded-sm border px-2 py-0.5 text-xs font-medium transition-all ${statusInfo.bg} ${canEdit ? "hover:opacity-85 cursor-pointer" : "cursor-default opacity-90"}`}
                         >
                           <span className="truncate">{statusInfo.label}</span>
-                          <ChevronDown className="h-3 w-3 opacity-60 shrink-0" />
+                          {canEdit && <ChevronDown className="h-3 w-3 opacity-60 shrink-0" />}
                         </button>
 
-                        {statusDropdownOpen === rowId && (
+                        {canEdit && statusDropdownOpen === rowId && (
                           <>
                             <div
                               className="fixed inset-0 z-30"
@@ -442,9 +502,8 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                                         void onUpdateStatus(rowId, stOpt.id as ResponseStatus);
                                         setStatusDropdownOpen(null);
                                       }}
-                                      className={`flex w-full items-center justify-between gap-2 rounded-xs px-2 py-1.5 text-xs text-left transition-colors hover:bg-accent-1 cursor-pointer ${
-                                        isCurrent ? "font-semibold text-foreground bg-accent-1/60" : "text-accent-6"
-                                      }`}
+                                      className={`flex w-full items-center justify-between gap-2 rounded-xs px-2 py-1.5 text-xs text-left transition-colors hover:bg-accent-1 cursor-pointer ${isCurrent ? "font-semibold text-foreground bg-accent-1/60" : "text-accent-6"
+                                        }`}
                                     >
                                       <div className="flex items-center gap-2 min-w-0">
                                         <div className={`h-2.5 w-2.5 rounded-full ${color.previewBg} shrink-0`} />
@@ -476,7 +535,7 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                     </td>
 
                     {/* Date */}
-                    <td className="px-3 py-1.5 text-sm font-sans text-accent-5 border-r border-border/60 whitespace-nowrap">
+                    <td className="px-3 py-1.5 text-sm font-sans text-accent-5 border-r border-border/60 whitespace-nowrap align-top">
                       {new Date(response.submittedAt).toLocaleDateString("en-US", {
                         month: "short",
                         day: "numeric",
@@ -485,58 +544,88 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                       })}
                     </td>
 
-                    {/* Respondent Email - Inline Editable Cell */}
-                    <td
-                      onClick={() => {
-                        if (!isEditingEmail) {
-                          startEditingCell(rowId, "__email__", response.respondentEmail || "", rowIndex, 0, false);
-                        }
-                      }}
-                      className={`px-3 py-1 border-r border-border/60 text-sm font-sans truncate max-w-[200px] cursor-text relative transition-colors ${
-                        isEditingEmail
-                          ? "ring-2 ring-foreground bg-background z-20 p-0"
-                          : activeCell?.rowIndex === rowIndex && activeCell?.colIndex === 0
-                          ? "ring-1 ring-foreground/60 bg-accent-1/50"
-                          : "hover:bg-accent-2/40"
-                      }`}
-                    >
-                      {isEditingEmail ? (
-                        <input
-                          ref={inputRef}
-                          type="text"
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          onBlur={() => void handleSaveCell()}
-                          onKeyDown={handleKeyDown}
-                          placeholder="Type email..."
-                          className="h-full w-full bg-background px-3 py-1 text-sm text-foreground outline-none font-sans"
-                        />
-                      ) : (
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          {response.respondentEmail ? (
-                            <span className="truncate font-medium text-foreground">{response.respondentEmail}</span>
-                          ) : (
-                            <span className="text-accent-4 italic font-sans text-xs">Anonymous</span>
-                          )}
-                          {hasNotes && (
-                            <span
-                              title={`${response.notes?.length} notes`}
-                              className="inline-flex items-center text-accent-5 shrink-0"
-                            >
-                              <MessageSquare className="h-3 w-3" />
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </td>
+                    {/* Respondent Email - Inline Editable Cell with Real-Time Remote Cursor */}
+                    {(() => {
+                      const remoteCollab =
+                        remoteCursors[`${rowId}_0`] ||
+                        remoteCursors[`${rowIndex}_0`] ||
+                        remoteCursors[`${rowId}___email__`];
 
-                    {/* Question Answer Cells with Single/Double-Click Inline Editing */}
+                      return (
+                        <td
+                          onClick={() => {
+                            if (!isEditingEmail) {
+                              if (canEdit) {
+                                startEditingCell(rowId, "__email__", response.respondentEmail || "", rowIndex, 0, false);
+                              } else {
+                                handleSelectActiveCell(rowId, "__email__", rowIndex, 0);
+                              }
+                            }
+                          }}
+                          style={
+                            remoteCollab
+                              ? { outline: `2px solid ${remoteCollab.color}`, outlineOffset: "-1px" }
+                              : undefined
+                          }
+                          className={`px-3 py-2 border-r border-border/60 text-sm font-sans break-words min-w-[180px] align-top ${canEdit ? "cursor-text" : "cursor-default"} relative transition-colors ${isEditingEmail
+                              ? "ring-2 ring-foreground bg-background z-20 p-0"
+                              : activeCell?.rowIndex === rowIndex && activeCell?.colIndex === 0
+                                ? "ring-1 ring-foreground/60 bg-accent-1/50"
+                                : "hover:bg-accent-2/40"
+                            }`}
+                        >
+                          {remoteCollab && (
+                            <div
+                              style={{ backgroundColor: remoteCollab.color }}
+                              className="absolute -top-2.5 right-1 z-30 flex items-center px-1.5 py-0.5 rounded-xs text-[10px] font-semibold text-white shadow-xs pointer-events-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-100"
+                            >
+                              {remoteCollab.name}
+                            </div>
+                          )}
+
+                          {isEditingEmail ? (
+                            <textarea
+                              ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+                              rows={Math.max(1, Math.min(5, editValue.split("\n").length))}
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              onBlur={() => void handleSaveCell()}
+                              onKeyDown={handleKeyDown}
+                              placeholder="Type email..."
+                              className="h-full min-h-[36px] w-full bg-background px-3 py-1.5 text-sm text-foreground outline-none font-sans resize-none rounded-none"
+                            />
+                          ) : (
+                            <div className="flex items-start gap-1.5 min-w-0">
+                              {response.respondentEmail ? (
+                                <span className="break-words font-medium text-foreground">{response.respondentEmail}</span>
+                              ) : (
+                                <span className="text-accent-4 italic font-sans text-xs">Anonymous</span>
+                              )}
+                              {hasNotes && (
+                                <span
+                                  title={`${response.notes?.length} notes`}
+                                  className="inline-flex items-center text-accent-5 shrink-0 mt-0.5"
+                                >
+                                  <MessageSquare className="h-3 w-3" />
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })()}
+
+                    {/* Question Answer Cells with Real-Time Remote Cursors */}
                     {questions.map((q, qIdx) => {
                       const colIndex = qIdx + 1;
                       const answer = response.answers?.find((a: Answer) => a.questionId === q.id);
                       const rawVal = answer?.value;
                       const isEditingThisCell =
                         editingCell?.rowKey === rowId && editingCell?.questionId === q.id;
+                      const remoteCollab =
+                        remoteCursors[`${rowId}_${colIndex}`] ||
+                        remoteCursors[`${rowIndex}_${colIndex}`] ||
+                        remoteCursors[`${rowId}_${q.id}`];
 
                       let displayVal = "-";
                       if (rawVal !== undefined && rawVal !== null && rawVal !== "") {
@@ -544,6 +633,10 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                           displayVal = rawVal.join(", ");
                         } else if (typeof rawVal === "object" && "name" in rawVal) {
                           displayVal = String((rawVal as { name: string }).name);
+                        } else if (typeof rawVal === "object") {
+                          displayVal = Object.entries(rawVal as Record<string, string>)
+                            .map(([r, c]) => `${r}: ${c}`)
+                            .join("; ");
                         } else {
                           displayVal = String(rawVal);
                         }
@@ -555,28 +648,45 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                           onClick={() => {
                             if (!isEditingThisCell) {
                               const cellInitial = displayVal !== "-" ? displayVal : "";
-                              startEditingCell(rowId, q.id, cellInitial, rowIndex, colIndex, false);
+                              if (canEdit) {
+                                startEditingCell(rowId, q.id, cellInitial, rowIndex, colIndex, false);
+                              } else {
+                                handleSelectActiveCell(rowId, q.id, rowIndex, colIndex);
+                              }
                             }
                           }}
-                          className={`px-3 py-1 border-r border-border/60 text-sm text-foreground font-sans truncate max-w-[260px] cursor-text relative transition-colors ${
-                            isEditingThisCell
+                          style={
+                            remoteCollab
+                              ? { outline: `2px solid ${remoteCollab.color}`, outlineOffset: "-1px" }
+                              : undefined
+                          }
+                          className={`px-3 py-2 border-r border-border/60 text-sm text-foreground font-sans break-words min-w-[200px] align-top whitespace-normal ${canEdit ? "cursor-text" : "cursor-default"} relative transition-colors ${isEditingThisCell
                               ? "ring-2 ring-foreground bg-background z-20 p-0"
                               : activeCell?.rowIndex === rowIndex && activeCell?.colIndex === colIndex
-                              ? "ring-1 ring-foreground/60 bg-accent-1/50"
-                              : "hover:bg-accent-2/40"
-                          }`}
-                          title={displayVal !== "-" ? displayVal : "Click to edit"}
+                                ? "ring-1 ring-foreground/60 bg-accent-1/50"
+                                : "hover:bg-accent-2/40"
+                            }`}
+                          title={displayVal !== "-" ? displayVal : canEdit ? "Click to edit" : undefined}
                         >
+                          {remoteCollab && (
+                            <div
+                              style={{ backgroundColor: remoteCollab.color }}
+                              className="absolute -top-2.5 right-1 z-30 flex items-center px-1.5 py-0.5 rounded-xs text-[10px] font-semibold text-white shadow-xs pointer-events-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-100"
+                            >
+                              {remoteCollab.name}
+                            </div>
+                          )}
+
                           {isEditingThisCell ? (
-                            <input
-                              ref={inputRef}
-                              type="text"
+                            <textarea
+                              ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+                              rows={Math.max(1, Math.min(6, editValue.split("\n").length))}
                               value={editValue}
                               onChange={(e) => setEditValue(e.target.value)}
                               onBlur={() => void handleSaveCell()}
                               onKeyDown={handleKeyDown}
                               placeholder="Type answer..."
-                              className="h-full w-full bg-background px-3 py-1 text-sm text-foreground outline-none font-sans"
+                              className="h-full min-h-[36px] w-full bg-background px-3 py-1.5 text-sm text-foreground outline-none font-sans resize-none rounded-none"
                             />
                           ) : q.type === "file_upload" && typeof rawVal === "string" && rawVal.startsWith("http") ? (
                             <a
@@ -586,11 +696,11 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                               className="inline-flex items-center gap-1 text-foreground underline hover:text-accent-7"
                               onClick={(e) => e.stopPropagation()}
                             >
-                              <FileText className="h-3 w-3" />
-                              <span>View file</span>
+                              <FileText className="h-3 w-3 shrink-0" />
+                              <span className="break-words">View file</span>
                             </a>
                           ) : (
-                            <span className={displayVal === "-" ? "text-accent-4 font-sans" : ""}>
+                            <span className={`break-words whitespace-pre-wrap ${displayVal === "-" ? "text-accent-4 font-sans" : ""}`}>
                               {displayVal}
                             </span>
                           )}
@@ -599,7 +709,8 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                     })}
 
                     {/* Row Action Menu */}
-                    <td className="px-2 py-1 text-center relative">
+                    {canEdit && (
+                    <td className="px-2 py-1 text-center relative align-top">
                       <button
                         type="button"
                         onClick={() => setActiveMenuRowId(activeMenuRowId === rowId ? null : rowId)}
@@ -608,7 +719,7 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                         <MoreHorizontal className="h-3.5 w-3.5" />
                       </button>
 
-                      {activeMenuRowId === rowId && (
+                      {activeMenuRowId === rowId && canEdit && (
                         <>
                           <div
                             className="fixed inset-0 z-30"
@@ -625,20 +736,20 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                               <Eye className="h-3.5 w-3.5" />
                               <span>Inspect Row</span>
                             </button>
-                            <button
-                              onClick={() => {
-                                void onDeleteRow(rowId);
-                                setActiveMenuRowId(null);
-                              }}
-                              className="flex w-full items-center gap-2 rounded-xs px-2.5 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-500/10 text-left cursor-pointer"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                              <span>Delete Row</span>
-                            </button>
+                              <button
+                                onClick={() => {
+                                  void onDeleteRow(rowId);
+                                  setActiveMenuRowId(null);
+                                }}
+                                className="flex w-full items-center gap-2 rounded-xs px-2.5 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-500/10 text-left cursor-pointer"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                <span>Delete Row</span>
+                              </button>
                           </div>
                         </>
                       )}
-                    </td>
+                    </td>)}
                   </tr>
                 );
               })}
@@ -649,6 +760,9 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                 const rowKey = `empty_${rowIndex}`;
                 const isEditingEmail =
                   editingCell?.rowKey === rowKey && editingCell?.questionId === "__email__";
+                const remoteEmailCollab =
+                  remoteCursors[`${rowKey}_0`] ||
+                  remoteCursors[`${rowIndex}_0`];
 
                 return (
                   <tr
@@ -682,23 +796,37 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                           startEditingCell(rowKey, "__email__", "", rowIndex, 0, true);
                         }
                       }}
-                      className={`border-r border-border/40 text-sm font-sans text-accent-4/60 cursor-text relative transition-colors ${
-                        isEditingEmail
+                      style={
+                        remoteEmailCollab
+                          ? { outline: `2px solid ${remoteEmailCollab.color}`, outlineOffset: "-1px" }
+                          : undefined
+                      }
+                      className={`px-3 py-2 border-r border-border/40 text-sm font-sans text-accent-4/60 break-words min-w-[180px] align-top cursor-text relative transition-colors ${isEditingEmail
                           ? "ring-2 ring-foreground bg-background z-20 p-0"
                           : activeCell?.rowIndex === rowIndex && activeCell?.colIndex === 0
-                          ? "ring-1 ring-foreground/60 bg-accent-1/40"
-                          : "hover:bg-accent-1/50"
-                      }`}
+                            ? "ring-1 ring-foreground/60 bg-accent-1/40"
+                            : "hover:bg-accent-1/50"
+                        }`}
                     >
+                      {remoteEmailCollab && (
+                        <div
+                          style={{ backgroundColor: remoteEmailCollab.color }}
+                          className="absolute -top-2.5 right-1 z-30 flex items-center px-1.5 py-0.5 rounded-xs text-[10px] font-semibold text-white shadow-xs pointer-events-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-100"
+                        >
+                          {remoteEmailCollab.name}
+                        </div>
+                      )}
+
                       {isEditingEmail ? (
-                        <input
-                          ref={inputRef}
-                          type="text"
+                        <textarea
+                          ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+                          rows={Math.max(1, Math.min(5, editValue.split("\n").length))}
                           value={editValue}
                           onChange={(e) => setEditValue(e.target.value)}
                           onBlur={() => void handleSaveCell()}
                           onKeyDown={handleKeyDown}
-                          className="h-full w-full px-3 py-1 bg-background px-3 border border-foreground text-sm text-foreground outline-none font-sans"
+                          placeholder="Type email..."
+                          className="h-full min-h-[36px] w-full px-3 py-1.5 bg-background text-sm text-foreground outline-none font-sans resize-none rounded-none"
                         />
                       ) : (
                         <span className="opacity-0 group-hover:opacity-60 transition-opacity text-xs">
@@ -711,6 +839,10 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                       const colIndex = qIdx + 1;
                       const isEditingThisCell =
                         editingCell?.rowKey === rowKey && editingCell?.questionId === q.id;
+                      const remoteQuestionCollab =
+                        remoteCursors[`${rowKey}_${colIndex}`] ||
+                        remoteCursors[`${rowIndex}_${colIndex}`] ||
+                        remoteCursors[`${rowKey}_${q.id}`];
 
                       return (
                         <td
@@ -720,23 +852,37 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                               startEditingCell(rowKey, q.id, "", rowIndex, colIndex, true);
                             }
                           }}
-                          className={`border-r border-border/40 text-sm font-sans text-accent-4/40 cursor-text relative transition-colors ${
-                            isEditingThisCell
+                          style={
+                            remoteQuestionCollab
+                              ? { outline: `2px solid ${remoteQuestionCollab.color}`, outlineOffset: "-1px" }
+                              : undefined
+                          }
+                          className={`px-3 py-2 border-r border-border/40 text-sm font-sans text-accent-4/40 break-words min-w-[200px] align-top cursor-text relative transition-colors ${isEditingThisCell
                               ? "ring-2 ring-foreground bg-background z-20 p-0"
                               : activeCell?.rowIndex === rowIndex && activeCell?.colIndex === colIndex
-                              ? "ring-1 ring-foreground/60 bg-accent-1/40"
-                              : "hover:bg-accent-1/50"
-                          }`}
+                                ? "ring-1 ring-foreground/60 bg-accent-1/40"
+                                : "hover:bg-accent-1/50"
+                            }`}
                         >
+                          {remoteQuestionCollab && (
+                            <div
+                              style={{ backgroundColor: remoteQuestionCollab.color }}
+                              className="absolute -top-2.5 right-1 z-30 flex items-center px-1.5 py-0.5 rounded-xs text-[10px] font-semibold text-white shadow-xs pointer-events-none whitespace-nowrap animate-in fade-in zoom-in-95 duration-100"
+                            >
+                              {remoteQuestionCollab.name}
+                            </div>
+                          )}
+
                           {isEditingThisCell ? (
-                            <input
-                              ref={inputRef}
-                              type="text"
+                            <textarea
+                              ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+                              rows={Math.max(1, Math.min(6, editValue.split("\n").length))}
                               value={editValue}
                               onChange={(e) => setEditValue(e.target.value)}
                               onBlur={() => void handleSaveCell()}
                               onKeyDown={handleKeyDown}
-                              className="h-full w-full bg-background px-3 py-1 border border-foreground text-sm text-foreground outline-none font-sans"
+                              placeholder="Type answer..."
+                              className="h-full min-h-[36px] w-full bg-background px-3 py-1.5 text-sm text-foreground outline-none font-sans resize-none rounded-none"
                             />
                           ) : (
                             <span className="opacity-0 group-hover:opacity-40 transition-opacity text-xs">

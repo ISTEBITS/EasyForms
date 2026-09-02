@@ -9,7 +9,8 @@ export type QuestionType =
   | 'email'
   | 'number'
   | 'file_upload'
-  | 'section_break';
+  | 'section_break'
+  | 'multiple_choice_grid';
 
 export interface QuestionOption {
   id: string;
@@ -42,6 +43,7 @@ export interface Question {
   description?: string;
   required: boolean;
   options?: QuestionOption[];
+  gridRows?: string[];
   placeholder?: string;
   conditions?: QuestionCondition[];
   logicOperator?: "AND" | "OR";
@@ -68,6 +70,28 @@ export interface ResponseNote {
 }
 
 export type CollaboratorRole = 'viewer' | 'editor' | 'admin';
+
+export interface UserFormAccess {
+  role: 'owner' | 'admin' | 'editor' | 'viewer';
+  isOwner: boolean;
+  canEdit: boolean;
+  canManageCollaborators: boolean;
+}
+
+export interface CollaboratorPresence {
+  clientId: string;
+  userId: string;
+  name: string;
+  email?: string;
+  role: CollaboratorRole | 'owner' | 'admin';
+  color: string;
+  activeCell?: {
+    rowKey: string;
+    rowIndex: number;
+    colIndex: number;
+    questionId?: string;
+  } | null;
+}
 
 export interface Collaborator {
   _id?: string;
@@ -97,6 +121,7 @@ export interface Form {
   isTestUserForm?: boolean;
   collaborators?: Collaborator[];
   shareSettings?: ShareSettings;
+  currentUserAccess?: UserFormAccess;
   owner?: {
     role?: "admin" | "test_user" | string;
     adminUsername?: string | null;
@@ -159,7 +184,7 @@ export interface FormResponse {
 
 export interface Answer {
   questionId: string;
-  value: string | string[] | number | File | null;
+  value: string | string[] | number | Record<string, string> | File | null;
 }
 
 export interface FormTemplate {
@@ -183,6 +208,7 @@ export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   number: 'Number',
   file_upload: 'File Upload',
   section_break: 'Section Break',
+  multiple_choice_grid: 'Multiple Choice Grid',
 };
 
 export const QUESTION_TYPE_ICONS: Record<QuestionType, string> = {
@@ -197,6 +223,7 @@ export const QUESTION_TYPE_ICONS: Record<QuestionType, string> = {
   number: 'Hash',
   file_upload: 'Upload',
   section_break: 'SeparatorHorizontal',
+  multiple_choice_grid: 'Grid3X3',
 };
 
 export const DEFAULT_QUESTION: Question = {

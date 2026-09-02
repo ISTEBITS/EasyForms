@@ -18,7 +18,7 @@ interface ResponsesShareModalProps {
   isOpen: boolean;
   onClose: () => void;
   form: Form;
-  onAddCollaborator: (email: string, role: CollaboratorRole) => Promise<void>;
+  onAddCollaborator: (email: string, role: CollaboratorRole, sendEmail?: boolean) => Promise<void>;
   onRemoveCollaborator: (collaboratorId: string) => Promise<void>;
   onUpdateShareSettings: (isPublic: boolean, permission: "viewer" | "editor") => Promise<void>;
 }
@@ -33,6 +33,7 @@ export const ResponsesShareModal: React.FC<ResponsesShareModalProps> = ({
 }) => {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<CollaboratorRole>("editor");
+  const [sendEmailNotification, setSendEmailNotification] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -53,7 +54,7 @@ export const ResponsesShareModal: React.FC<ResponsesShareModalProps> = ({
     if (!inviteEmail.trim()) return;
     try {
       setIsSubmitting(true);
-      await onAddCollaborator(inviteEmail.trim(), inviteRole);
+      await onAddCollaborator(inviteEmail.trim(), inviteRole, sendEmailNotification);
       setInviteEmail("");
     } catch {
       // handled in parent
@@ -99,14 +100,14 @@ export const ResponsesShareModal: React.FC<ResponsesShareModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-sm text-accent-5 hover:bg-accent-1 hover:text-foreground transition-colors"
+            className="flex h-7 w-7 items-center justify-center rounded-sm text-accent-5 hover:bg-accent-1 hover:text-foreground transition-colors cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Invite Form */}
-        <form onSubmit={handleInvite} className="space-y-2">
+        <form onSubmit={handleInvite} className="space-y-2.5">
           <label className="block text-sm font-sans uppercase text-accent-5 font-medium">
             Add Collaborator
           </label>
@@ -132,7 +133,7 @@ export const ResponsesShareModal: React.FC<ResponsesShareModalProps> = ({
               type="submit"
               size="xs"
               disabled={isSubmitting || !inviteEmail.trim()}
-              className="rounded-sm h-8 px-3 gap-1 bg-foreground text-background hover:bg-accent-7"
+              className="rounded-sm h-8 px-3 gap-1 bg-foreground text-background hover:bg-accent-7 cursor-pointer"
             >
               {isSubmitting ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -141,6 +142,23 @@ export const ResponsesShareModal: React.FC<ResponsesShareModalProps> = ({
               )}
               <span>Invite</span>
             </Button>
+          </div>
+
+          {/* Option to send email notification or not */}
+          <div className="flex items-center gap-2 pt-0.5">
+            <input
+              id="send-collab-invite-email"
+              type="checkbox"
+              checked={sendEmailNotification}
+              onChange={(e) => setSendEmailNotification(e.target.checked)}
+              className="h-3.5 w-3.5 rounded-xs border-border text-foreground accent-foreground cursor-pointer"
+            />
+            <label
+              htmlFor="send-collab-invite-email"
+              className="text-xs text-accent-6 cursor-pointer select-none font-sans"
+            >
+              Send email notification invite to collaborator
+            </label>
           </div>
         </form>
 

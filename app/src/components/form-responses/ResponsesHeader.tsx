@@ -9,11 +9,15 @@ import {
   RefreshCw,
   Search,
   ChevronLeft,
+  Check,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { Form, ResponseStatus } from "@/types/form";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import type { Form, ResponseStatus, UserFormAccess, CollaboratorPresence } from "@/types/form";
 
 export type ViewMode = "sheet" | "analytics";
+export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 interface ResponsesHeaderProps {
   form: Form;
@@ -32,6 +36,12 @@ interface ResponsesHeaderProps {
   isRefreshing: boolean;
   onBack: () => void;
   collaboratorCount: number;
+  saveStatus?: SaveStatus;
+  currentUserAccess?: UserFormAccess;
+  onlineCollaborators?: CollaboratorPresence[];
+  currentClientId?: string;
+  currentUserEmail?: string;
+  currentUserId?: string;
 }
 
 export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
@@ -51,7 +61,33 @@ export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
   isRefreshing,
   onBack,
   collaboratorCount,
+  saveStatus = "idle",
+  currentUserAccess,
+  onlineCollaborators = [],
+  currentClientId,
+  currentUserEmail,
+  currentUserId,
 }) => {
+  const isViewer = currentUserAccess ? !currentUserAccess.canEdit : false;
+  const canManageCollaborators = currentUserAccess ? currentUserAccess.canManageCollaborators : true;
+
+  // Deduplicate collaborators by user identity (email or userId)
+  const uniqueCollaborators = React.useMemo(() => {
+    const map = new Map<string, CollaboratorPresence>();
+    for (const c of onlineCollaborators) {
+      const key = (c.email || c.userId || c.clientId).toLowerCase();
+      if (!map.has(key)) {
+        map.set(key, { ...c });
+      } else {
+        const existing = map.get(key)!;
+        if (c.activeCell) {
+          existing.activeCell = c.activeCell;
+        }
+      }
+    }
+    return Array.from(map.values());
+  }, [onlineCollaborators]);
+
   return (
     <header className="space-y-3 pb-3 border-b border-border">
       {/* Top Breadcrumb & Actions Bar */}
@@ -72,12 +108,89 @@ export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
               <span className="inline-flex items-center rounded-sm border border-border bg-accent-1 px-2 py-0.5 text-sm font-sans text-accent-6">
                 {totalResponses} {totalResponses === 1 ? "response" : "responses"}
               </span>
+
+              {/* View-Only Badge for Viewers */}
+              {isViewer && (
+                <span className="inline-flex items-center gap-1 rounded-sm border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-500 font-sans">
+                  <Eye className="h-3 w-3" />
+                  <span>View only</span>
+                </span>
+              )}
+
+              {/* Google Sheets-style Auto-Save Status Indicator */}
+              {!isViewer && saveStatus === "saving" && (
+                <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-sans text-accent-5 animate-pulse">
+                  <span className="h-2 w-2 rounded-full bg-amber-500" />
+                  <span>Saving...</span>
+                </span>
+              )}
+              {!isViewer && saveStatus === "saved" && (
+                <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-sans text-accent-5">
+                  <Check className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400" />
+                  <span>All changes saved to cloud</span>
+                </span>
+              )}
+              {!isViewer && saveStatus === "error" && (
+                <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-sans text-red-500">
+                  <span className="h-2 w-2 rounded-full bg-red-500" />
+                  <span>Failed to save changes</span>
+                </span>
+              )}
             </div>
           </div>
         </div>
 
         {/* Right Actions */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* Live Collaborator Avatars (Google Sheets style, 1 per user) */}
+          {uniqueCollaborators.length > 0 && (
+            <div className="flex items-center -space-x-1.5 overflow-hidden pl-1">
+              {uniqueCollaborators.map((c) => {
+                const isSelf =
+                  (currentClientId && c.clientId === currentClientId) ||
+                  (currentUserEmail && c.email && c.email.toLowerCase() === currentUserEmail.toLowerCase()) ||
+                  (currentUserId && c.userId && c.userId === currentUserId);
+
+                const initials = (c.name || c.email || "C")
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .substring(0, 2)
+                  .toUpperCase();
+
+                const activityDesc = c.activeCell
+                  ? `Editing Row ${c.activeCell.rowIndex + 1}, Col ${c.activeCell.colIndex + 1}`
+                  : "Viewing";
+
+                return (
+                  <TooltipProvider key={c.email || c.userId || c.clientId} delay={100}>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <div
+                          style={{ backgroundColor: c.color }}
+                          className={`relative flex size-7 shrink-0 items-center justify-center rounded-full border-2 text-white text-[10px] font-bold shadow-xs cursor-pointer select-none transition-transform hover:scale-110 hover:z-20 ${
+                            isSelf ? "border-foreground ring-1 ring-background" : "border-background"
+                          }`}
+                        >
+                          {initials}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="text-xs">
+                        <div className="font-semibold">
+                          {c.name} {isSelf ? "(You)" : ""} {c.email ? `(${c.email})` : ""}
+                        </div>
+                        <div className="text-accent-3 text-[11px] flex items-center gap-1 mt-0.5">
+                          <span className="inline-block size-1.5 rounded-full" style={{ backgroundColor: c.color }} />
+                          {activityDesc}
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                );
+              })}
+            </div>
+          )}
+
           {/* View Mode Toggle */}
           <div className="inline-flex items-center rounded-sm border border-border bg-accent-1/50 p-0.5">
             <button
@@ -102,34 +215,38 @@ export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
             </button>
           </div>
 
-          {/* Share / Collaborate */}
-          <Button
-            variant="outline"
-            size="xs"
-            onClick={onOpenShare}
-            className="rounded-sm gap-1.5 font-sans h-8"
-          >
-            <Share2 className="h-3.5 w-3.5 text-accent-6" />
-            <span>Share</span>
-            {collaboratorCount > 0 && (
-              <span className="ml-1 inline-flex h-4 items-center justify-center rounded-xs bg-accent-2 px-1 text-[10px] font-sans text-foreground font-medium">
-                {collaboratorCount}
-              </span>
-            )}
-          </Button>
-
-          {/* Export / Import */}
-          <div className="flex items-center gap-1">
+          {/* Share / Collaborate (Only for owner/admin) */}
+          {canManageCollaborators && (
             <Button
               variant="outline"
               size="xs"
-              onClick={onImport}
+              onClick={onOpenShare}
               className="rounded-sm gap-1.5 font-sans h-8"
-              title="Import CSV Responses"
             >
-              <Upload className="h-3.5 w-3.5 text-accent-5" />
-              <span className="hidden sm:inline">Import</span>
+              <Share2 className="h-3.5 w-3.5 text-accent-6" />
+              <span>Share</span>
+              {collaboratorCount > 0 && (
+                <span className="ml-1 inline-flex h-4 items-center justify-center rounded-xs bg-accent-2 px-1 text-[10px] font-sans text-foreground font-medium">
+                  {collaboratorCount}
+                </span>
+              )}
             </Button>
+          )}
+
+          {/* Export / Import (Import only for editors/owners) */}
+          <div className="flex items-center gap-1">
+            {!isViewer && (
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={onImport}
+                className="rounded-sm gap-1.5 font-sans h-8"
+                title="Import CSV Responses"
+              >
+                <Upload className="h-3.5 w-3.5 text-accent-5" />
+                <span className="hidden sm:inline">Import</span>
+              </Button>
+            )}
             <div className="relative group">
               <Button
                 variant="outline"
@@ -143,15 +260,17 @@ export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
             </div>
           </div>
 
-          {/* Add Row Manual Entry */}
-          <Button
-            size="xs"
-            onClick={onAddRow}
-            className="rounded-sm gap-1.5 bg-foreground text-background hover:bg-accent-7 font-sans h-8"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Add Row</span>
-          </Button>
+          {/* Add Row Manual Entry (Only for editors/owners) */}
+          {!isViewer && (
+            <Button
+              size="xs"
+              onClick={onAddRow}
+              className="rounded-sm gap-1.5 bg-foreground text-background hover:bg-accent-7 font-sans h-8"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Add Row</span>
+            </Button>
+          )}
 
           {/* Refresh */}
           <Button
