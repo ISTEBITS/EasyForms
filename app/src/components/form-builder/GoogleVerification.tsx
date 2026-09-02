@@ -1,7 +1,7 @@
-import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
+import { useGoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
 import { toast } from "sonner";
-import { Shield, UserCheck } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
+import { useState } from "react";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_CLIENT_ID;
 
@@ -9,110 +9,112 @@ interface Props {
   onVerified: (token: string, displayEmail: string) => void;
 }
 
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
-  const base64Url = token.split(".")[1];
-  if (!base64Url) return null;
+function CustomGoogleSignInButton({ onVerified }: Props) {
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
-  const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
-  const decoded = atob(padded);
-  return JSON.parse(decoded) as Record<string, unknown>;
-}
+  const login = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      try {
+        const accessToken = tokenResponse.access_token;
+        if (!accessToken) {
+          toast.error("Authentication failed");
+          setIsAuthenticating(false);
+          return;
+        }
 
-function GoogleButton({ onVerified }: Props) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const [buttonWidth, setButtonWidth] = useState(320);
+        const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
 
-  useEffect(() => {
-    const element = containerRef.current;
-    if (!element) return;
+        if (!res.ok) {
+          toast.error("Unable to retrieve account information");
+          setIsAuthenticating(false);
+          return;
+        }
 
-    const updateWidth = () => {
-      const nextWidth = Math.max(
-        180,
-        Math.min(320, Math.floor(element.clientWidth)),
-      );
-      setButtonWidth(nextWidth);
-    };
+        const data = await res.json();
+        const email = data.email;
+        if (!email) {
+          toast.error("Email not found on Google account");
+          setIsAuthenticating(false);
+          return;
+        }
 
-    updateWidth();
+        onVerified(accessToken, email);
+      } catch (err) {
+        console.error(err);
+        toast.error("Authentication process failed");
+      } finally {
+        setIsAuthenticating(false);
+      }
+    },
+    onError: () => {
+      setIsAuthenticating(false);
+    },
+    onNonOAuthError: (nonOAuthError) => {
+      setIsAuthenticating(false);
+      if (nonOAuthError.type === "popup_closed") {
+        toast.info("Google sign-in was cancelled");
+      }
+    },
+  });
 
-    const observer = new ResizeObserver(updateWidth);
-    observer.observe(element);
-
-    return () => observer.disconnect();
-  }, []);
+  const handleSignIn = () => {
+    setIsAuthenticating(true);
+    login();
+  };
 
   return (
-    <div ref={containerRef} className="w-full max-w-sm flex justify-center">
-      <GoogleLogin
-        onSuccess={(credentialResponse) => {
-          try {
-            const idToken = credentialResponse.credential;
-            if (!idToken) {
-              toast.error("Authentication failed");
-              return;
-            }
-
-            const payload = decodeJwtPayload(idToken);
-            const email = payload?.email;
-            if (typeof email !== "string" || !email) {
-              toast.error("Unable to retrieve account information");
-              return;
-            }
-
-            onVerified(idToken, email);
-          } catch (error) {
-            console.log(error);
-            toast.error("Authentication failed");
-          }
-        }}
-        onError={() => toast.error("Authentication failed")}
-        theme="outline"
-        size="large"
-        text="continue_with"
-        shape="pill"
-        width={String(buttonWidth)}
-      />
-    </div>
+    <button
+      type="button"
+      onClick={handleSignIn}
+      disabled={isAuthenticating}
+      className="inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-sm border border-border bg-background px-4 text-sm font-medium text-foreground transition-all duration-150 hover:bg-accent-1 hover:border-accent-6 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50 cursor-pointer"
+    >
+      {isAuthenticating ? (
+        <>
+          <Loader2 className="h-4 w-4 animate-spin text-accent-6" />
+          <span className="font-sans">Authenticating...</span>
+        </>
+      ) : (
+        <>
+          <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="#4285F4"
+              d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17Z"
+            />
+            <path
+              fill="#34A853"
+              d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24Z"
+            />
+            <path
+              fill="#FBBC05"
+              d="M5.28 14.27a7.195 7.195 0 0 1 0-4.54V6.58H1.25a11.986 11.986 0 0 0 0 10.84l4.03-3.15Z"
+            />
+            <path
+              fill="#EA4335"
+              d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98Z"
+            />
+          </svg>
+          <span className="font-sans">Sign in with Google</span>
+        </>
+      )}
+    </button>
   );
 }
 
 export function GoogleVerification({ onVerified }: Props) {
   if (!GOOGLE_CLIENT_ID) {
     return (
-      <div className="rounded-sm border border-border bg-accent-1 p-4 text-xs text-accent-5">
-        Authentication unavailable. Configuration required.
+      <div className="rounded-md border border-border bg-accent-1 p-3.5 text-sm text-accent-5 font-sans">
+        Google Authentication is unavailable. Configuration required.
       </div>
     );
   }
 
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <div className="rounded-sm border border-border bg-accent-1/60 p-5 sm:p-6">
-        <div className="flex flex-col items-center text-center">
-          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-sm border border-border bg-accent-1">
-            <Shield className="h-5 w-5 text-accent-7" />
-          </div>
-
-          <h3 className="text-sm font-semibold text-foreground">
-            Verify Identity
-          </h3>
-
-          <p className="mt-1 text-xs text-accent-5">
-            Continue with Google to submit this form.
-          </p>
-
-          <div className="mt-4 flex w-full max-w-sm flex-col items-center">
-            <div className="mb-2 flex items-center justify-center gap-2 text-xs text-accent-5">
-              <UserCheck className="h-3.5 w-3.5" />
-              Secure verification
-            </div>
-
-            <GoogleButton onVerified={onVerified} />
-          </div>
-        </div>
-      </div>
+      <CustomGoogleSignInButton onVerified={onVerified} />
     </GoogleOAuthProvider>
   );
 }

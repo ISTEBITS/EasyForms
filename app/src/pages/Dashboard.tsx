@@ -363,7 +363,8 @@ export function Dashboard({ onEditForm }: DashboardProps) {
         }}
         onDeleteForm={(formId) => setFormToDelete(formId)}
         onShareForm={async (form) => {
-          const link = `${window.location.origin}/form/${form.id || form._id}`;
+          const publicIdentifier = form.slug || form.id || form._id;
+          const link = `${window.location.origin}/form/${publicIdentifier}`;
           try {
             await navigator.clipboard.writeText(link);
             toast.success("Public form link copied to clipboard");

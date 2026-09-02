@@ -218,6 +218,108 @@ export async function sendSubmissionReceipt({
   return { sent: false, reason: "missing_mailer_config" };
 }
 
+export async function sendCollaboratorInviteEmail({
+  to,
+  formTitle,
+  formId,
+  role,
+  inviterName,
+  inviterEmail,
+}) {
+  const smtpMailer = getSmtpTransporter();
+  const tokenMailer = getMailtrapClient();
+  const fromEmail = getSenderEmail();
+  if (!fromEmail) return { sent: false, reason: "missing_sender_email" };
+
+  const appBaseUrl = process.env.CLIENT_URL || process.env.APP_URL || "http://localhost:5173";
+  const accessUrl = `${appBaseUrl}/forms/${formId}/responses`;
+  const subject = `You've been invited to collaborate on "${formTitle || "a form"}"`;
+
+  const roleDescription =
+    role === "admin"
+      ? "Manage form settings, responses, and team collaborators"
+      : role === "editor"
+      ? "View responses, edit submission data, and add internal notes"
+      : "View form responses and summary analytics";
+
+  const safeTitle = escapeHtml(formTitle || "Untitled Form");
+  const safeInviter = escapeHtml(inviterName || inviterEmail || "A team member");
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #000000; margin: 0; padding: 32px 16px; color: #ffffff;">
+        <div style="max-width: 520px; margin: 0 auto; background: #0a0a0a; border: 1px solid #262626; border-radius: 12px; padding: 32px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+          <div style="display: inline-block; background-color: #171717; color: #a3a3a3; font-size: 11px; font-family: monospace; font-weight: 600; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid #262626;">
+            Collaboration Invite
+          </div>
+          <h1 style="font-size: 20px; font-weight: 600; margin: 16px 0 8px; color: #ffffff; letter-spacing: -0.02em;">
+            Join &ldquo;${safeTitle}&rdquo;
+          </h1>
+          <p style="font-size: 14px; line-height: 1.6; color: #a3a3a3; margin: 12px 0;">
+            <strong style="color: #ffffff;">${safeInviter}</strong> has invited you to collaborate on the form <strong style="color: #ffffff;">&ldquo;${safeTitle}&rdquo;</strong> on EasyForms.
+          </p>
+          
+          <div style="background: #171717; border: 1px solid #262626; border-radius: 8px; padding: 16px; margin: 20px 0;">
+            <p style="margin: 0; font-size: 13px; font-weight: 600; color: #ffffff;">
+              Assigned Role: <span style="text-transform: capitalize; color: #60a5fa;">${role}</span>
+            </p>
+            <p style="margin: 4px 0 0; font-size: 12px; color: #737373;">
+              ${roleDescription}
+            </p>
+          </div>
+
+          <p style="font-size: 14px; color: #a3a3a3; margin: 16px 0;">
+            Click below to open the responses spreadsheet and start collaborating:
+          </p>
+          
+          <div style="margin: 24px 0;">
+            <a href="${accessUrl}" style="display: inline-block; background: #ffffff; color: #000000 !important; text-decoration: none; padding: 10px 20px; font-size: 13px; font-weight: 600; border-radius: 6px; text-align: center;">
+              Open Responses Sheet &rarr;
+            </a>
+          </div>
+
+          <div style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #262626; font-size: 11px; font-family: monospace; color: #525252;">
+            <p style="margin: 0;">If you were not expecting this invitation, you can ignore this email.</p>
+            <p style="margin: 4px 0 0;">EasyForms &bull; Response Collaboration Suite</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const text = `You've been invited by ${inviterName || inviterEmail || "a team member"} to collaborate on "${formTitle}" as a ${role}.\n\nAccess the responses here: ${accessUrl}`;
+
+  if (smtpMailer) {
+    await smtpMailer.sendMail({
+      from: fromEmail,
+      to,
+      subject,
+      text,
+      html,
+    });
+    return { sent: true, provider: "smtp" };
+  }
+
+  if (tokenMailer) {
+    await tokenMailer.send({
+      from: { email: fromEmail, name: process.env.MAIL_FROM_NAME || "Easy Forms" },
+      to: [{ email: to }],
+      subject,
+      text,
+      html,
+      category: "collaborator_invite",
+    });
+    return { sent: true, provider: "mailtrap" };
+  }
+
+  return { sent: false, reason: "missing_mailer_config" };
+}
+
 export function getMailStatus() {
   const hasSmtp =
     Boolean(process.env.SMTP_HOST) &&

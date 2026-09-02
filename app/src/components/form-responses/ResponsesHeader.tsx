@@ -1,0 +1,203 @@
+import React from "react";
+import {
+  Table as TableIcon,
+  BarChart3,
+  Share2,
+  Download,
+  Upload,
+  Plus,
+  RefreshCw,
+  Search,
+  ChevronLeft,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type { Form, ResponseStatus } from "@/types/form";
+
+export type ViewMode = "sheet" | "analytics";
+
+interface ResponsesHeaderProps {
+  form: Form;
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
+  totalResponses: number;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
+  statusFilter: ResponseStatus | "all";
+  onStatusFilterChange: (status: ResponseStatus | "all") => void;
+  onAddRow: () => void;
+  onImport: () => void;
+  onExport: (format: "csv" | "json") => void;
+  onOpenShare: () => void;
+  onRefresh: () => void;
+  isRefreshing: boolean;
+  onBack: () => void;
+  collaboratorCount: number;
+}
+
+export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
+  form,
+  viewMode,
+  onViewModeChange,
+  totalResponses,
+  searchQuery,
+  onSearchChange,
+  statusFilter,
+  onStatusFilterChange,
+  onAddRow,
+  onImport,
+  onExport,
+  onOpenShare,
+  onRefresh,
+  isRefreshing,
+  onBack,
+  collaboratorCount,
+}) => {
+  return (
+    <header className="space-y-3 pb-3 border-b border-border">
+      {/* Top Breadcrumb & Actions Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <button
+            onClick={onBack}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-border bg-background text-accent-5 hover:bg-accent-1 hover:text-foreground transition-colors cursor-pointer"
+            title="Return to Dashboard"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="truncate text-base font-semibold text-foreground font-sans tracking-tight">
+                {form.title || "Untitled Form"}
+              </h1>
+              <span className="inline-flex items-center rounded-sm border border-border bg-accent-1 px-2 py-0.5 text-sm font-sans text-accent-6">
+                {totalResponses} {totalResponses === 1 ? "response" : "responses"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Actions */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* View Mode Toggle */}
+          <div className="inline-flex items-center rounded-sm border border-border bg-accent-1/50 p-0.5">
+            <button
+              onClick={() => onViewModeChange("sheet")}
+              className={`inline-flex items-center gap-1.5 rounded-xs px-2.5 py-1 text-sm font-medium transition-all ${viewMode === "sheet"
+                  ? "bg-background text-foreground shadow-2xs"
+                  : "text-accent-5 hover:text-foreground"
+                }`}
+            >
+              <TableIcon className="h-3.5 w-3.5" />
+              <span>Sheet</span>
+            </button>
+            <button
+              onClick={() => onViewModeChange("analytics")}
+              className={`inline-flex items-center gap-1.5 rounded-xs px-2.5 py-1 text-sm font-medium transition-all ${viewMode === "analytics"
+                  ? "bg-background text-foreground shadow-2xs"
+                  : "text-accent-5 hover:text-foreground"
+                }`}
+            >
+              <BarChart3 className="h-3.5 w-3.5" />
+              <span>Analytics</span>
+            </button>
+          </div>
+
+          {/* Share / Collaborate */}
+          <Button
+            variant="outline"
+            size="xs"
+            onClick={onOpenShare}
+            className="rounded-sm gap-1.5 font-sans h-8"
+          >
+            <Share2 className="h-3.5 w-3.5 text-accent-6" />
+            <span>Share</span>
+            {collaboratorCount > 0 && (
+              <span className="ml-1 inline-flex h-4 items-center justify-center rounded-xs bg-accent-2 px-1 text-[10px] font-sans text-foreground font-medium">
+                {collaboratorCount}
+              </span>
+            )}
+          </Button>
+
+          {/* Export / Import */}
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="xs"
+              onClick={onImport}
+              className="rounded-sm gap-1.5 font-sans h-8"
+              title="Import CSV Responses"
+            >
+              <Upload className="h-3.5 w-3.5 text-accent-5" />
+              <span className="hidden sm:inline">Import</span>
+            </Button>
+            <div className="relative group">
+              <Button
+                variant="outline"
+                size="xs"
+                className="rounded-sm gap-1.5 font-sans h-8"
+                onClick={() => onExport("csv")}
+              >
+                <Download className="h-3.5 w-3.5 text-accent-5" />
+                <span>Export</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Add Row Manual Entry */}
+          <Button
+            size="xs"
+            onClick={onAddRow}
+            className="rounded-sm gap-1.5 bg-foreground text-background hover:bg-accent-7 font-sans h-8"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Add Row</span>
+          </Button>
+
+          {/* Refresh */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            className="h-8 w-8 rounded-sm text-accent-5 hover:text-foreground"
+            title="Reload responses"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
+      </div>
+
+      {/* Filter and Search Bar for Sheet View */}
+      {viewMode === "sheet" && (
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-accent-4" />
+            <input
+              type="text"
+              placeholder="Search responses, emails, answers..."
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="h-8 w-full rounded-sm border border-border bg-background pl-8 pr-3 text-sm font-sans text-foreground placeholder:text-accent-4 focus:outline-none focus:ring-1 focus:ring-foreground"
+            />
+          </div>
+
+          {/* Status Filter Tabs */}
+          <div className="flex items-center gap-1 overflow-x-auto pb-0.5 hide-scrollbar">
+            {(["all", "unreviewed", "reviewed", "approved", "flagged"] as const).map((status) => (
+              <button
+                key={status}
+                onClick={() => onStatusFilterChange(status)}
+                className={`rounded-sm px-2.5 py-1 text-sm font-medium capitalize transition-colors ${statusFilter === status
+                    ? "bg-foreground text-background"
+                    : "border border-border bg-background text-accent-5 hover:bg-accent-1 hover:text-foreground"
+                  }`}
+              >
+                {status}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </header>
+  );
+};

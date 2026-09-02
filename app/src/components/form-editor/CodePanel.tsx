@@ -15,7 +15,8 @@ export function CodePanel({ form }: CodePanelProps) {
   const [isJsonCopied, setIsJsonCopied] = useState(false);
 
   const formId = form._id || form.id;
-  const shareUrl = `${window.location.origin}/form/${formId}`;
+  const publicPath = form.slug || formId;
+  const shareUrl = `${window.location.origin}/form/${publicPath}`;
   const iframeSnippet = `<iframe\n  src="${shareUrl}"\n  width="100%"\n  height="650"\n  frameborder="0"\n  marginheight="0"\n  marginwidth="0"\n  title="${form.title || "EasyForm"}"\n>Loading...</iframe>`;
 
   const jsonSchema = JSON.stringify(

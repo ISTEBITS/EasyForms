@@ -159,7 +159,7 @@ export default function ProtectedAppShell() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-foreground selection:text-background">
       {/* Geist Blur Header Navbar */}
-      <header className="sticky top-0 z-50 h-14 border-b border-border bg-background/80 backdrop-blur-md transition-all">
+      <header className="sticky top-0 z-50 h-14 border-b border-border bg-background transition-all">
         <div className="h-full px-4 lg:px-8 flex items-center justify-between gap-4">
           {/* Left Side Branding & Workspace */}
           <div className="flex items-center gap-4">
@@ -183,9 +183,9 @@ export default function ProtectedAppShell() {
               </span>
             </Link>
 
-            <span className="text-accent-4 text-xs font-mono hidden sm:inline-block">/</span>
+            <span className="text-accent-4 text-xs font-sans hidden sm:inline-block">/</span>
 
-            <div className="hidden sm:flex items-center gap-2 rounded-full border border-border bg-accent-1 px-2.5 py-0.5 font-mono text-[10px] uppercase font-semibold text-accent-6">
+            <div className="hidden sm:flex items-center gap-2 rounded-full border border-border bg-accent-1 px-2.5 py-0.5 font-sans text-xs uppercase font-semibold text-accent-6">
               <span className={`h-1.5 w-1.5 rounded-full ${isAdmin ? "bg-blue-500" : "bg-purple-500"}`} />
               <span className="truncate max-w-[160px]">
                 {isAdmin ? "Admin Workspace" : "Test User"}
@@ -204,7 +204,7 @@ export default function ProtectedAppShell() {
                 <Search className="h-3.5 w-3.5 text-accent-5 shrink-0" />
                 <span className="hidden truncate font-sans text-xs">Search forms, pages...</span>
               </div>
-              <kbd className="hidden sm:inline-block font-mono text-[10px] uppercase border border-border bg-background px-1.5 py-0.5 rounded-xs text-accent-5">
+              <kbd className="hidden sm:inline-block font-sans text-xs uppercase border border-border bg-background px-1.5 py-0.5 rounded-xs text-accent-5">
                 ⌘K
               </kbd>
             </button>
@@ -219,7 +219,7 @@ export default function ProtectedAppShell() {
                   />
                 </div>
               ) : (
-                <div className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-accent-2 font-mono text-xs font-semibold text-foreground">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-accent-2 font-sans text-xs font-semibold text-foreground">
                   {userInitial}
                 </div>
               )}
@@ -228,7 +228,7 @@ export default function ProtectedAppShell() {
                 <span className="text-xs font-medium text-foreground leading-tight font-sans">
                   {userName}
                 </span>
-                <span className="font-mono text-[10px] uppercase text-accent-5">
+                <span className="font-sans text-xs uppercase text-accent-5">
                   {user?.role === "admin" ? "ADMIN" : "TEST USER"}
                 </span>
               </div>
@@ -255,7 +255,7 @@ export default function ProtectedAppShell() {
         <aside className="hidden lg:flex w-60 shrink-0 flex-col justify-between border-r border-border bg-background p-4 sticky top-14 h-[calc(100vh-3.5rem)]">
           <div className="space-y-6">
             <div className="px-2">
-              <p className="font-mono text-[10px] uppercase font-semibold text-accent-4 tracking-wider">
+              <p className="font-sans text-xs uppercase font-semibold text-accent-4 tracking-wider">
                 Platform Navigation
               </p>
             </div>
@@ -268,7 +268,7 @@ export default function ProtectedAppShell() {
                     key={tab.key}
                     to={tab.to}
                     className={({ isActive }) =>
-                      `flex items-center gap-3 px-3 py-2 text-xs font-sans font-medium rounded-sm transition-all duration-150 ${isActive
+                      `flex items-center gap-3 px-3 py-2 text-sm font-sans font-medium rounded-sm transition-all duration-150 ${isActive
                         ? "bg-accent-1 text-foreground border border-border"
                         : "text-accent-5 hover:text-foreground hover:bg-accent-1 border border-transparent"
                       }`
@@ -289,9 +289,9 @@ export default function ProtectedAppShell() {
 
         {/* Mobile Navigation Drawer */}
         {mobileMenuOpen && (
-          <div className="lg:hidden fixed inset-0 z-40 bg-background/95 backdrop-blur-md flex flex-col p-6 space-y-4 pt-20 border-b border-border">
+          <div className="lg:hidden fixed inset-0 z-40 bg-background flex flex-col p-6 space-y-4 pt-20 border-b border-border">
             <div className="px-2">
-              <p className="font-mono text-[10px] uppercase font-semibold text-accent-5">Navigation</p>
+              <p className="font-sans text-xs uppercase font-semibold text-accent-5">Navigation</p>
             </div>
             <nav className="space-y-2">
               {tabs.map((tab) => {

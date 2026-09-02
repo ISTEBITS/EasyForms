@@ -67,27 +67,28 @@ interface FormEditorProps {
   onBack: () => void;
 }
 
-const normalizeSlugInput = (value: string) =>
+const formatSlugTyping = (value: string) =>
   value
     .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, "")
     .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-+/g, "-");
+
+const cleanSlug = (value: string) =>
+  formatSlugTyping(value).replace(/^-+|-+$/g, "");
 
 const ensureUniqueSlug = (
   desiredSlug: string | undefined,
   allForms: Form[],
   currentFormId: string,
 ) => {
-  const normalized = normalizeSlugInput(desiredSlug || "");
+  const normalized = cleanSlug(desiredSlug || "");
   if (!normalized) return undefined;
 
   const usedSlugs = new Set(
     allForms
       .filter((item) => (item._id || item.id) !== currentFormId)
-      .map((item) => normalizeSlugInput(item.slug || ""))
+      .map((item) => cleanSlug(item.slug || ""))
       .filter(Boolean),
   );
 
@@ -286,10 +287,6 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
 
   const handleUploadThemeAsset = useCallback(
     async (target: "logoUrl" | "bannerUrl", file: File) => {
-      if (isTestUser) {
-        toast.error("Test users cannot upload branding assets");
-        return;
-      }
       if (isThemeAssetUploading) return;
       setIsThemeAssetUploading(true);
       try {
@@ -389,7 +386,7 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleSave]);
 
-  const shareUrl = `${window.location.origin}/form/${form._id || form.id}`;
+  const shareUrl = `${window.location.origin}/form/${form.slug || form._id || form.id}`;
 
   const handleDownloadQrCode = useCallback(async () => {
     if (isQrGenerating) return;
@@ -431,9 +428,14 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
       backgroundSize: "cover",
       backgroundPosition: "center",
     }
-    : {
-      backgroundColor: form.settings.theme.backgroundColor || "#000000",
-    };
+    : form.settings.theme.backgroundColor &&
+      form.settings.theme.backgroundColor !== "#ffffff" &&
+      form.settings.theme.backgroundColor !== "#fafafa" &&
+      form.settings.theme.backgroundColor !== ""
+    ? {
+      backgroundColor: form.settings.theme.backgroundColor,
+    }
+    : undefined;
 
   return (
     <div className="flex h-[calc(100vh-4rem)] w-full flex-col overflow-hidden bg-background text-foreground font-sans pb-14 lg:pb-0 relative">
@@ -465,13 +467,13 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
               />
 
               {/* Status Indicator */}
-              <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-accent-1/60 border border-border text-[11px] font-medium text-accent-5 flex-shrink-0">
+              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent-1/60 border border-border text-xs font-mono text-accent-5 flex-shrink-0">
                 <div
                   className={`h-2 w-2 rounded-full ${isSaving
                       ? "bg-accent-4 animate-pulse"
                       : isDirty
-                        ? "bg-red-900"
-                        : "bg-green-900"
+                        ? "bg-amber-500"
+                        : "bg-emerald-500"
                     }`}
                 />
                 <span>
@@ -644,7 +646,7 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
                 onSlugChange={(value) =>
                   updateFormState((prev) => ({
                     ...prev,
-                    slug: normalizeSlugInput(value) || undefined,
+                    slug: formatSlugTyping(value),
                   }))
                 }
                 onSlugBlur={() =>
@@ -677,7 +679,7 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
 
         {/* CENTER CANVAS PANEL (Direct Live View on Mobile & Desktop) */}
         <div
-          className={`flex-1 hide-scrollbar overflow-y-auto p-3 sm:p-4 flex flex-col transition-all duration-200 ${showRightDesign ? "lg:w-[45%]" : "lg:w-[70%]"
+          className={`flex-1 bg-background hide-scrollbar overflow-y-auto p-3 sm:p-4 flex flex-col transition-all duration-200 ${showRightDesign ? "lg:w-[45%]" : "lg:w-[70%]"
             }`}
           style={canvasBgStyle}
         >
@@ -724,7 +726,7 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
               {/* Form Title & Intro Description Card */}
               <div className="rounded-xs border border-border bg-background p-4 sm:p-6 space-y-4 shadow-sm transition-geist duration-150 hover:border-accent-7">
                 <div className="space-y-1">
-                  <Label className="text-[10px] font-semibold uppercase tracking-wider text-accent-5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-accent-5">
                     Form Title
                   </Label>
                   <Input
@@ -741,8 +743,8 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-accent-5 font-mono">
-                    Form Description (Markdown Supported)
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-accent-5">
+                    Form Description 
                   </Label>
                   <MarkdownEditor
                     value={form.description || ""}
@@ -796,7 +798,7 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
                   <p className="text-xs font-medium text-foreground mb-1">
                     Start building your form
                   </p>
-                  <p className="text-[11px] text-accent-5 max-w-sm mx-auto">
+                  <p className="text-xs text-accent-5 max-w-sm mx-auto">
                     Tap &quot;+ Fields&quot; on the bottom dock to add questions.
                   </p>
                 </div>
@@ -820,65 +822,65 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
       </main>
 
       {/* MOBILE FLOATING BOTTOM NAVIGATION DOCK (lg:hidden) */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-md border-t border-border p-1.5 grid grid-cols-5 gap-1 shadow-lg">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-md border-t border-border p-2 grid grid-cols-5 gap-1.5 shadow-lg safe-area-pb">
         <button
           type="button"
           onClick={() => setMobileSheet("fields")}
-          className={`flex flex-col items-center justify-center py-1.5 rounded-xs transition-geist text-[10px] font-medium ${mobileSheet === "fields"
-              ? "bg-accent-2 text-foreground font-semibold"
-              : "text-accent-5 hover:text-foreground"
+          className={`flex flex-col items-center justify-center py-2 px-1 rounded-sm transition-all text-xs font-medium ${mobileSheet === "fields"
+              ? "bg-accent-2 text-foreground font-semibold border border-border"
+              : "text-accent-5 hover:text-foreground border border-transparent hover:bg-accent-1"
             }`}
         >
-          <Plus className="h-4 w-4 text-geist-success mb-0.5" />
-          <span>+ Fields</span>
+          <Plus className="h-4.5 w-4.5 text-geist-success mb-1" />
+          <span className="leading-tight">Fields</span>
         </button>
 
         <button
           type="button"
           onClick={() => setMobileSheet("settings")}
-          className={`flex flex-col items-center justify-center py-1.5 rounded-xs transition-geist text-[10px] font-medium ${mobileSheet === "settings"
-              ? "bg-accent-2 text-foreground font-semibold"
-              : "text-accent-5 hover:text-foreground"
+          className={`flex flex-col items-center justify-center py-2 px-1 rounded-sm transition-all text-xs font-medium ${mobileSheet === "settings"
+              ? "bg-accent-2 text-foreground font-semibold border border-border"
+              : "text-accent-5 hover:text-foreground border border-transparent hover:bg-accent-1"
             }`}
         >
-          <SettingsIcon className="h-4 w-4 mb-0.5" />
-          <span>Settings</span>
+          <SettingsIcon className="h-4.5 w-4.5 mb-1" />
+          <span className="leading-tight">Settings</span>
         </button>
 
         <button
           type="button"
           onClick={() => setMobileSheet("design")}
-          className={`flex flex-col items-center justify-center py-1.5 rounded-xs transition-geist text-[10px] font-medium ${mobileSheet === "design"
-              ? "bg-accent-2 text-foreground font-semibold"
-              : "text-accent-5 hover:text-foreground"
+          className={`flex flex-col items-center justify-center py-2 px-1 rounded-sm transition-all text-xs font-medium ${mobileSheet === "design"
+              ? "bg-accent-2 text-foreground font-semibold border border-border"
+              : "text-accent-5 hover:text-foreground border border-transparent hover:bg-accent-1"
             }`}
         >
-          <Palette className="h-4 w-4 text-accent-6 mb-0.5" />
-          <span>Design</span>
+          <Palette className="h-4.5 w-4.5 text-accent-6 mb-1" />
+          <span className="leading-tight">Design</span>
         </button>
 
         <button
           type="button"
           onClick={() => setMobileSheet("code")}
-          className={`flex flex-col items-center justify-center py-1.5 rounded-xs transition-geist text-[10px] font-medium ${mobileSheet === "code"
-              ? "bg-accent-2 text-foreground font-semibold"
-              : "text-accent-5 hover:text-foreground"
+          className={`flex flex-col items-center justify-center py-2 px-1 rounded-sm transition-all text-xs font-medium ${mobileSheet === "code"
+              ? "bg-accent-2 text-foreground font-semibold border border-border"
+              : "text-accent-5 hover:text-foreground border border-transparent hover:bg-accent-1"
             }`}
         >
-          <Layers className="h-4 w-4 mb-0.5" />
-          <span>SDK & Code</span>
+          <Layers className="h-4.5 w-4.5 mb-1" />
+          <span className="leading-tight">Code</span>
         </button>
 
         <button
           type="button"
           onClick={() => setPreviewMode(!previewMode)}
-          className={`flex flex-col items-center justify-center py-1.5 rounded-xs transition-geist text-[10px] font-medium ${previewMode
-              ? "bg-accent-2 text-foreground font-semibold"
-              : "text-accent-5 hover:text-foreground"
+          className={`flex flex-col items-center justify-center py-2 px-1 rounded-sm transition-all text-xs font-medium ${previewMode
+              ? "bg-accent-2 text-foreground font-semibold border border-border"
+              : "text-accent-5 hover:text-foreground border border-transparent hover:bg-accent-1"
             }`}
         >
-          <Eye className="h-4 w-4 mb-0.5 text-accent-6" />
-          <span>{previewMode ? "Edit" : "Preview"}</span>
+          <Eye className="h-4.5 w-4.5 mb-1 text-accent-6" />
+          <span className="leading-tight">{previewMode ? "Edit" : "Preview"}</span>
         </button>
       </div>
 
@@ -933,7 +935,7 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
                 onSlugChange={(value) =>
                   updateFormState((prev) => ({
                     ...prev,
-                    slug: normalizeSlugInput(value) || undefined,
+                    slug: formatSlugTyping(value),
                   }))
                 }
                 onSlugBlur={() =>
@@ -1039,7 +1041,7 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
                     {form.isPublished ? "Published & Live" : "Draft (Private)"}
                   </span>
                 </div>
-                <p className="text-[11px] text-accent-5 mt-0.5">
+                <p className="text-xs text-accent-5 mt-0.5">
                   {form.isPublished
                     ? "Form accepts responses at public link"
                     : "Publish form to accept public submissions"}

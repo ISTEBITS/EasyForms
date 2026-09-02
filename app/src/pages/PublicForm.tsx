@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { useParams } from "react-router-dom";
-import { AlertCircle, Loader } from "lucide-react";
+import { useParams, Link } from "react-router-dom";
+import { AlertCircle, Loader2 } from "lucide-react";
 import { FormPreview } from "@/components/form-preview";
 import { useForms } from "@/hooks/useForms";
 import { ApiError, formsApi } from "@/api";
@@ -17,12 +17,14 @@ export function PublicForm() {
   const loadForm = useCallback(async () => {
     if (!formId) return;
     try {
-      const foundForm = await formsApi.getById(formId);
+      setLoading(true);
+      setError(null);
+      const foundForm = await formsApi.getPublic(formId);
       if (foundForm) {
         if (foundForm.isPublished) {
           setForm(foundForm);
         } else {
-          setError("This form is currently unavailable");
+          setError("This form is currently unavailable or unpublished.");
         }
       } else {
         setError("Form not found");
@@ -31,7 +33,7 @@ export function PublicForm() {
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError("Connection failed");
+        setError("Unable to connect to form service");
       }
     } finally {
       setLoading(false);
@@ -51,7 +53,9 @@ export function PublicForm() {
     answers: Record<string, unknown>,
     googleToken?: string,
   ) => {
-    if (!form || !formId) return;
+    if (!form) return;
+    const resolvedId = form.id || form._id;
+    if (!resolvedId) return;
 
     const validation = validateSubmissionPayload(form, answers, googleToken);
     if (!validation.isValid) {
@@ -70,7 +74,7 @@ export function PublicForm() {
       }),
     );
 
-    const response = await submitResponse(formId, {
+    const response = await submitResponse(resolvedId, {
       answers: responseData,
       googleToken,
     });
@@ -82,12 +86,12 @@ export function PublicForm() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="rounded-sm border border-border bg-accent-1 px-5 py-4 text-sm text-accent-5">
-          <span className="inline-flex items-center gap-2">
-            <Loader className="h-4 w-4 animate-spin" />
-            Loading form
-          </span>
+      <div className="relative min-h-screen bg-background text-foreground flex items-center justify-center p-4 selection:bg-foreground selection:text-background font-sans">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-96 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(120,119,198,0.1),rgba(0,0,0,0))]" />
+
+        <div className="flex flex-col items-center gap-3 rounded-md border border-border bg-background/80 backdrop-blur-md px-8 py-6 shadow-xs">
+          <Loader2 className="h-5 w-5 animate-spin text-accent-6" />
+          <span className="text-xs text-accent-5 font-sans">Loading form...</span>
         </div>
       </div>
     );
@@ -95,25 +99,37 @@ export function PublicForm() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="w-full max-w-md rounded-sm border border-border bg-background p-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-sm border border-border bg-accent-1">
-            <AlertCircle className="h-6 w-6 text-accent-6" />
+      <div className="relative min-h-screen flex items-center justify-center p-4 bg-background text-foreground selection:bg-foreground selection:text-background font-sans">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-96 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(238,0,0,0.08),rgba(0,0,0,0))]" />
+
+        <div className="w-full max-w-md rounded-md border border-border bg-background p-8 text-center shadow-xs space-y-4">
+          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-sm border border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400">
+            <AlertCircle className="h-5 w-5" />
           </div>
-          <h2 className="text-xl font-semibold text-foreground">{error}</h2>
-          <p className="mt-2 text-sm text-accent-5">
-            Unable to access the requested form. Please verify the URL or
-            contact the administrator.
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="mt-6 inline-flex h-10 items-center justify-center rounded-sm border border-border bg-accent-1 px-4 text-sm text-foreground transition-geist duration-150 hover:bg-accent-2"
-          >
-            Try Again
-          </button>
-          <p className="mt-5 text-xs font-sans uppercase text-accent-4">
-            Ref: {formId ? formId.substring(0, 8).toUpperCase() : "NULL"}
-          </p>
+
+          <div className="space-y-1.5">
+            <h1 className="text-base font-semibold tracking-tight text-foreground font-sans">
+              {error}
+            </h1>
+            <p className="text-xs text-accent-5 leading-relaxed font-sans">
+              The form you are attempting to access is currently unavailable, unpublished, or has expired.
+            </p>
+          </div>
+
+          <div className="pt-2 flex flex-col sm:flex-row gap-2.5 justify-center">
+            <button
+              onClick={() => window.location.reload()}
+              className="inline-flex h-9 items-center justify-center rounded-sm border border-border bg-accent-1 px-4 text-xs font-medium text-foreground transition-all hover:bg-accent-2 active:scale-98 cursor-pointer font-sans"
+            >
+              Try Again
+            </button>
+            <Link
+              to="/"
+              className="inline-flex h-9 items-center justify-center rounded-sm bg-foreground px-4 text-xs font-medium text-background transition-all hover:bg-accent-7 active:scale-98 font-sans"
+            >
+              Return to Home
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -122,12 +138,14 @@ export function PublicForm() {
   if (!form) return null;
 
   return (
-    <div className="min-h-screen px-3 py-6 sm:px-6 sm:py-8">
-      <div className="mx-auto w-full max-w-[940px]">
-        <div className="relative">
-          <FormPreview form={form} onSubmit={handleSubmit} />
-        </div>
-      </div>
+    <div className="relative min-h-screen bg-background text-foreground selection:bg-foreground selection:text-background font-sans">
+
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(120,119,198,0.08),rgba(255,255,255,0))] dark:bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(120,119,198,0.12),rgba(0,0,0,0))]" />
+
+      {/* Main Centered Form Container */}
+      <main className="relative z-10 mx-auto w-full max-w-2xl xl:max-w-3xl px-4 py-4 sm:px-6 sm:py-16">
+        <FormPreview form={form} onSubmit={handleSubmit} />
+      </main>
     </div>
   );
 }

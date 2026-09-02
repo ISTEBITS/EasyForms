@@ -12,6 +12,7 @@ import {
   TrendingUp,
   Eye,
   Plus,
+  Users,
 } from "lucide-react";
 import { useMemo } from "react";
 import type { Form } from "@/types/form";
@@ -104,7 +105,7 @@ export function DashboardWorkspace({
       {/* Metrics Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-sm border border-border bg-background p-5">
-          <div className="flex items-center justify-between text-xs font-mono font-medium text-accent-5">
+          <div className="flex items-center justify-between text-xs font-sans font-medium text-accent-5">
             <span>TOTAL SUBMISSIONS</span>
             <BarChart2 className="h-4 w-4 text-emerald-400" />
           </div>
@@ -117,7 +118,7 @@ export function DashboardWorkspace({
         </div>
 
         <div className="rounded-sm border border-border bg-background p-5">
-          <div className="flex items-center justify-between text-xs font-mono font-medium text-accent-5">
+          <div className="flex items-center justify-between text-xs font-sans font-medium text-accent-5">
             <span>AVG SUBMISSIONS</span>
             <TrendingUp className="h-4 w-4 text-blue-400" />
           </div>
@@ -128,7 +129,7 @@ export function DashboardWorkspace({
         </div>
 
         <div className="rounded-sm border border-border bg-background p-5">
-          <div className="flex items-center justify-between text-xs font-mono font-medium text-accent-5">
+          <div className="flex items-center justify-between text-xs font-sans font-medium text-accent-5">
             <span>PUBLISH RATE</span>
             <PieChart className="h-4 w-4 text-purple-400" />
           </div>
@@ -141,7 +142,7 @@ export function DashboardWorkspace({
         </div>
 
         <div className="rounded-sm border border-border bg-background p-5">
-          <div className="flex items-center justify-between text-xs font-mono font-medium text-accent-5">
+          <div className="flex items-center justify-between text-xs font-sans font-medium text-accent-5">
             <span>ACTIVE THIS WEEK</span>
             <Activity className="h-4 w-4 text-amber-400" />
           </div>
@@ -236,15 +237,26 @@ export function DashboardWorkspace({
                         <div className="flex h-8 w-8 items-center justify-center rounded-sm border border-border bg-accent-1 text-foreground">
                           <FileText className="h-4 w-4" />
                         </div>
-                        <span
-                          className={`px-2.5 py-0.5 font-mono text-xs uppercase font-semibold border rounded-full ${
-                            form.isPublished
-                              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                              : "border-border bg-accent-1 text-accent-6"
-                          }`}
-                        >
-                          {form.isPublished ? "Published" : "Draft"}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          {form.collaborators && form.collaborators.length > 0 && (
+                            <span
+                              className="inline-flex items-center gap-1 rounded-sm border border-border bg-accent-1 px-2 py-0.5 text-xs font-sans text-accent-6"
+                              title={`${form.collaborators.length} collaborators`}
+                            >
+                              <Users className="h-3 w-3" />
+                              <span>{form.collaborators.length}</span>
+                            </span>
+                          )}
+                          <span
+                            className={`px-2.5 py-0.5 font-sans text-xs uppercase font-semibold border rounded-sm ${
+                              form.isPublished
+                                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                                : "border-border bg-accent-1 text-accent-6"
+                            }`}
+                          >
+                            {form.isPublished ? "Published" : "Draft"}
+                          </span>
+                        </div>
                       </div>
 
                       <div>
@@ -258,13 +270,13 @@ export function DashboardWorkspace({
                     </div>
 
                     <div className="mt-6 flex items-center justify-between pt-3 border-t border-border text-xs text-accent-5">
-                      <span className="flex items-center gap-1.5 font-mono text-xs">
+                      <span className="flex items-center gap-1.5 font-sans text-xs">
                         <BarChart2 className="h-3.5 w-3.5 text-accent-4" />
                         {form.responseCount || 0} responses
                       </span>
 
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs">
+                        <span className="font-sans text-xs">
                           {formatDate(form.updatedAt)}
                         </span>
 
@@ -341,8 +353,17 @@ export function DashboardWorkspace({
                     </div>
 
                     <div className="flex items-center gap-5 text-xs shrink-0 font-sans">
+                      {form.collaborators && form.collaborators.length > 0 && (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-sm border border-border bg-accent-1 px-2 py-0.5 text-xs font-sans text-accent-6"
+                          title={`${form.collaborators.length} collaborators`}
+                        >
+                          <Users className="h-3 w-3" />
+                          <span>{form.collaborators.length}</span>
+                        </span>
+                      )}
                       <span
-                        className={`px-2.5 py-0.5 font-mono text-xs uppercase font-semibold border rounded-full ${
+                        className={`px-2.5 py-0.5 font-sans text-xs uppercase font-semibold border rounded-sm ${
                           form.isPublished
                             ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
                             : "border-border bg-accent-1 text-accent-6"
@@ -350,7 +371,7 @@ export function DashboardWorkspace({
                       >
                         {form.isPublished ? "Published" : "Draft"}
                       </span>
-                      <span className="font-mono text-xs text-accent-6">
+                      <span className="font-sans text-xs text-accent-6">
                         {form.responseCount || 0} responses
                       </span>
 

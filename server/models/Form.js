@@ -58,9 +58,9 @@ const QuestionSchema = new mongoose.Schema({
 });
 
 const FormThemeSchema = new mongoose.Schema({
-  primaryColor: { type: String, default: "#7c3aed" },
-  backgroundColor: { type: String, default: "#ffffff" },
-  fontFamily: { type: String, default: "Inter" },
+  primaryColor: { type: String, default: "#0070f3" },
+  backgroundColor: { type: String, default: "" },
+  fontFamily: { type: String, default: "Geist Sans" },
   logoUrl: { type: String, default: "" },
   bannerUrl: { type: String, default: "" },
   backgroundImageUrl: { type: String, default: "" },
@@ -121,6 +121,18 @@ function slugifyTitle(value = "") {
     .replace(/^-+|-+$/g, "");
 }
 
+const CollaboratorSchema = new mongoose.Schema({
+  email: { type: String, required: true },
+  role: { type: String, enum: ["viewer", "editor", "admin"], default: "viewer" },
+  addedAt: { type: Date, default: Date.now },
+});
+
+const ShareSettingsSchema = new mongoose.Schema({
+  isPublicShareEnabled: { type: Boolean, default: false },
+  shareToken: { type: String, default: null },
+  publicPermission: { type: String, enum: ["viewer", "editor"], default: "viewer" },
+});
+
 const FormSchema = new mongoose.Schema({
   title: { type: String, required: true, default: "Untitled Form" },
   description: { type: String, default: "" },
@@ -132,6 +144,15 @@ const FormSchema = new mongoose.Schema({
   isPublished: { type: Boolean, default: false },
   responseCount: { type: Number, default: 0 },
   isTestUserForm: { type: Boolean, default: false, index: true },
+  collaborators: { type: [CollaboratorSchema], default: [] },
+  shareSettings: {
+    type: ShareSettingsSchema,
+    default: () => ({
+      isPublicShareEnabled: false,
+      shareToken: null,
+      publicPermission: "viewer",
+    }),
+  },
   owner: {
     role: { type: String, enum: ["admin", "test_user"], default: "admin" },
     adminUsername: { type: String, default: null },

@@ -224,8 +224,8 @@ export const SettingsContent = ({
               <button
                 type="button"
                 onClick={() => logoInputRef.current?.click()}
-                disabled={isThemeAssetUploading || isTestUser}
-                className="inline-flex h-9 items-center justify-center gap-2 rounded-sm border border-border bg-background px-3 text-xs text-foreground transition-geist duration-150 hover:bg-accent-1 disabled:cursor-not-allowed disabled:opacity-60 md:text-sm"
+                disabled={isThemeAssetUploading}
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-sm border border-border bg-background px-3 text-xs text-foreground transition-geist duration-150 hover:bg-accent-1 disabled:cursor-not-allowed disabled:opacity-60 md:text-sm cursor-pointer"
               >
                 <Sparkles className="h-4 w-4" />
                 {form.settings.theme.logoUrl ? "Replace Logo" : "Upload Logo"}
@@ -233,8 +233,8 @@ export const SettingsContent = ({
               <button
                 type="button"
                 onClick={() => backgroundInputRef.current?.click()}
-                disabled={isThemeAssetUploading || isTestUser}
-                className="inline-flex h-9 items-center justify-center gap-2 rounded-sm border border-border bg-background px-3 text-xs text-foreground transition-geist duration-150 hover:bg-accent-1 disabled:cursor-not-allowed disabled:opacity-60 md:text-sm"
+                disabled={isThemeAssetUploading}
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-sm border border-border bg-background px-3 text-xs text-foreground transition-geist duration-150 hover:bg-accent-1 disabled:cursor-not-allowed disabled:opacity-60 md:text-sm cursor-pointer"
               >
                 <Image className="h-4 w-4" />
                 {form.settings.theme.bannerUrl ||
@@ -244,9 +244,7 @@ export const SettingsContent = ({
               </button>
             </div>
             <p className="text-xs text-accent-5">
-              {isTestUser
-                ? "Branding assets are fixed for test users."
-                : "Banner image appears at the top of the public form."}
+              Banner image appears at the top of the public form.
             </p>
             {bannerImageUrl && (
               <div className="space-y-3 rounded-sm border border-border bg-background p-3">

@@ -41,7 +41,7 @@ export const getPreviewClasses = (previewDevice: PreviewDevice) => {
   return {
     previewShellClass:
       previewDevice === "auto"
-        ? "relative border-none bg-transparent overflow-hidden rounded-sm md:border md:border-border md:bg-background p-1 sm:p-7"
+        ? "relative border-none bg-transparent overflow-hidden p-0"
         : "relative bg-background overflow-hidden",
     bannerHeightClass:
       previewDevice === "auto"
@@ -55,11 +55,6 @@ export const getPreviewClasses = (previewDevice: PreviewDevice) => {
         : isForcedMobile
           ? "p-4"
           : "p-6",
-    questionGridClass:
-      previewDevice === "auto"
-        ? "grid grid-cols-1 gap-4 md:grid-cols-2"
-        : isForcedMobile
-          ? "grid grid-cols-1 gap-4"
-          : "grid grid-cols-2 gap-4",
+    questionGridClass: "space-y-4",
   };
 };

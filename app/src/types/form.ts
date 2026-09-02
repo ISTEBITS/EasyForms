@@ -53,6 +53,35 @@ export interface Question {
   maxFileSize?: number;
 }
 
+export type ResponseStatus =
+  | 'unreviewed'
+  | 'reviewed'
+  | 'approved'
+  | 'flagged'
+  | 'rejected';
+
+export interface ResponseNote {
+  id: string;
+  author: string;
+  text: string;
+  createdAt: string;
+}
+
+export type CollaboratorRole = 'viewer' | 'editor' | 'admin';
+
+export interface Collaborator {
+  _id?: string;
+  email: string;
+  role: CollaboratorRole;
+  addedAt: string;
+}
+
+export interface ShareSettings {
+  isPublicShareEnabled: boolean;
+  shareToken?: string | null;
+  publicPermission: 'viewer' | 'editor';
+}
+
 export interface Form {
   _id?: string;
   id: string;
@@ -66,6 +95,8 @@ export interface Form {
   isPublished: boolean;
   responseCount: number;
   isTestUserForm?: boolean;
+  collaborators?: Collaborator[];
+  shareSettings?: ShareSettings;
   owner?: {
     role?: "admin" | "test_user" | string;
     adminUsername?: string | null;
@@ -112,6 +143,11 @@ export interface FormResponse {
   id: string;
   formId: string;
   submittedAt: string;
+  updatedAt?: string;
+  status?: ResponseStatus;
+  tags?: string[];
+  notes?: ResponseNote[];
+  editedBy?: string | null;
   answers: Answer[];
   googleToken?: string;
   respondentEmail?: string;
@@ -200,9 +236,9 @@ export const DEFAULT_FORM: Form = {
         'Hi {{name}},\n\nThank you for completing "{{formTitle}}". We have recorded your submission on {{submittedAt}}.',
     },
     theme: {
-      primaryColor: '#7c3aed',
-      backgroundColor: '#ffffff',
-      fontFamily: 'Inter',
+      primaryColor: '#0070f3',
+      backgroundColor: '',
+      fontFamily: 'Geist Sans',
       logoUrl: '',
       bannerUrl: '',
       backgroundImageUrl: '',

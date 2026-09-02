@@ -236,7 +236,7 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
             onClick={onClose}
             className="p-1 rounded-xs text-accent-5 hover:bg-accent-1 hover:text-foreground transition-colors"
           >
-            <kbd className="font-mono text-[10px] uppercase border border-border bg-accent-1 px-1.5 py-0.5 rounded-xs text-accent-5">
+            <kbd className="font-mono text-xs uppercase border border-border bg-accent-1 px-1.5 py-0.5 rounded-xs text-accent-5">
               ESC
             </kbd>
           </button>
@@ -255,7 +255,7 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
           ) : (
             Object.entries(groupedItems).map(([category, items]) => (
               <div key={category} className="pt-2 first:pt-0 space-y-1">
-                <div className="px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-accent-4">
+                <div className="px-3 py-1 font-mono text-xs font-semibold uppercase tracking-wider text-accent-4">
                   {category}
                 </div>
                 {items.map((item) => {
@@ -275,15 +275,15 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xs border border-border ${isHighlighted ? "bg-background text-foreground" : "bg-accent-1 text-accent-5"}`}>
-                          <Icon className="h-3.5 w-3.5" />
+                        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xs border border-border ${isHighlighted ? "bg-background text-foreground" : "bg-accent-1 text-accent-5"}`}>
+                          <Icon className="h-4 w-4" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-xs font-semibold text-foreground truncate font-sans">
+                          <p className="text-sm font-medium text-foreground truncate font-sans">
                             {item.title}
                           </p>
                           {item.description && (
-                            <p className="text-[11px] text-accent-5 truncate font-sans">
+                            <p className="text-xs text-accent-5 truncate font-sans">
                               {item.description}
                             </p>
                           )}
@@ -291,7 +291,7 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
                       </div>
 
                       {isHighlighted && (
-                        <ArrowRight className="h-3.5 w-3.5 text-accent-5 shrink-0" />
+                        <ArrowRight className="h-4 w-4 text-accent-5 shrink-0" />
                       )}
                     </div>
                   );
@@ -302,11 +302,11 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
         </div>
 
         {/* Modal Footer Keyboard Shortcuts */}
-        <div className="border-t border-border bg-accent-1/50 px-4 py-2 flex items-center justify-between font-mono text-[10px] text-accent-5">
+        <div className="border-t border-border bg-accent-1/50 px-4 py-2.5 flex items-center justify-between font-mono text-xs text-accent-5">
           <div className="flex items-center gap-3">
-            <span><kbd className="border border-border bg-background px-1 py-0.5 rounded-xs">↑↓</kbd> Navigate</span>
-            <span><kbd className="border border-border bg-background px-1 py-0.5 rounded-xs">↵</kbd> Select</span>
-            <span><kbd className="border border-border bg-background px-1 py-0.5 rounded-xs">esc</kbd> Dismiss</span>
+            <span><kbd className="border border-border bg-background px-1.5 py-0.5 rounded-xs">↑↓</kbd> Navigate</span>
+            <span><kbd className="border border-border bg-background px-1.5 py-0.5 rounded-xs">↵</kbd> Select</span>
+            <span><kbd className="border border-border bg-background px-1.5 py-0.5 rounded-xs">esc</kbd> Dismiss</span>
           </div>
         </div>
       </div>
