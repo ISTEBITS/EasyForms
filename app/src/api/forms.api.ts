@@ -29,6 +29,32 @@ export const formsApi = {
     return transformForm(data);
   },
 
+  getBySlug: async (slug: string): Promise<Form> => {
+    const data = await apiRequest<ApiPayload>(`/forms/public/slug/${encodeURIComponent(slug)}`);
+    return transformForm(data);
+  },
+
+  getPublic: async (idOrSlug: string): Promise<Form> => {
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(idOrSlug.trim());
+    if (isObjectId) {
+      try {
+        const data = await apiRequest<ApiPayload>(`/forms/public/${idOrSlug}`);
+        return transformForm(data);
+      } catch {
+        const data = await apiRequest<ApiPayload>(`/forms/public/slug/${encodeURIComponent(idOrSlug)}`);
+        return transformForm(data);
+      }
+    } else {
+      try {
+        const data = await apiRequest<ApiPayload>(`/forms/public/slug/${encodeURIComponent(idOrSlug)}`);
+        return transformForm(data);
+      } catch {
+        const data = await apiRequest<ApiPayload>(`/forms/public/${idOrSlug}`);
+        return transformForm(data);
+      }
+    }
+  },
+
   getByIdAdmin: async (id: string): Promise<Form> => {
     const data = await apiRequest<ApiPayload>(`/forms/${id}`);
     return transformForm(data);
@@ -59,6 +85,97 @@ export const formsApi = {
   getResponses: async (id: string): Promise<FormResponse[]> => {
     const data = await apiRequest<ApiPayload[]>(`/forms/${id}/responses`);
     return data.map(transformResponse);
+  },
+
+  updateResponse: async (
+    formId: string,
+    responseId: string,
+    data: Partial<FormResponse> & { newNote?: string }
+  ): Promise<FormResponse> => {
+    const res = await apiRequest<ApiPayload>(`/forms/${formId}/responses/${responseId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+    return transformResponse(res);
+  },
+
+  deleteResponse: async (formId: string, responseId: string): Promise<void> => {
+    await apiRequest(`/forms/${formId}/responses/${responseId}`, {
+      method: "DELETE",
+    });
+  },
+
+  bulkDeleteResponses: async (formId: string, responseIds: string[]): Promise<void> => {
+    await apiRequest(`/forms/${formId}/responses/bulk-delete`, {
+      method: "POST",
+      body: JSON.stringify({ responseIds }),
+    });
+  },
+
+  bulkUpdateResponseStatus: async (formId: string, responseIds: string[], status: string): Promise<void> => {
+    await apiRequest(`/forms/${formId}/responses/bulk-update-status`, {
+      method: "POST",
+      body: JSON.stringify({ responseIds, status }),
+    });
+  },
+
+  manualCreateResponse: async (
+    formId: string,
+    data: {
+      answers: FormResponse["answers"];
+      respondentEmail?: string;
+      respondentName?: string;
+      status?: string;
+      tags?: string[];
+    }
+  ): Promise<FormResponse> => {
+    const res = await apiRequest<ApiPayload>(`/forms/${formId}/responses/manual`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return transformResponse(res);
+  },
+
+  addCollaborator: async (
+    formId: string,
+    email: string,
+    role: "viewer" | "editor" | "admin"
+  ): Promise<Form["collaborators"]> => {
+    return apiRequest<Form["collaborators"]>(`/forms/${formId}/collaborators`, {
+      method: "POST",
+      body: JSON.stringify({ email, role }),
+    });
+  },
+
+  removeCollaborator: async (
+    formId: string,
+    collaboratorId: string
+  ): Promise<Form["collaborators"]> => {
+    return apiRequest<Form["collaborators"]>(`/forms/${formId}/collaborators/${collaboratorId}`, {
+      method: "DELETE",
+    });
+  },
+
+  updateShareSettings: async (
+    formId: string,
+    shareSettings: { isPublicShareEnabled: boolean; publicPermission?: "viewer" | "editor" }
+  ): Promise<Form["shareSettings"]> => {
+    return apiRequest<Form["shareSettings"]>(`/forms/${formId}/share-settings`, {
+      method: "PATCH",
+      body: JSON.stringify(shareSettings),
+    });
+  },
+
+  getSharedResponses: async (
+    shareToken: string
+  ): Promise<{ form: Form; responses: FormResponse[] }> => {
+    const data = await apiRequest<{ form: ApiPayload; responses: ApiPayload[] }>(
+      `/forms/public/shared-responses/${shareToken}`
+    );
+    return {
+      form: transformForm(data.form),
+      responses: data.responses.map(transformResponse),
+    };
   },
 
   getMailStatus: async (): Promise<MailStatusResponse> => {
