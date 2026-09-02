@@ -59,6 +59,10 @@ const settingsSchema = z.object({
 const formBodySchema = z.object({
   title: z.string().min(1).max(100),
   description: z.string().optional(),
+  slug: z
+    .string()
+    .regex(/^[a-z0-9-]+$/, "Slug must contain only lowercase letters, numbers, and hyphens")
+    .optional(),
   questions: z.array(questionSchema),
   settings: settingsSchema.optional(),
   isPublished: z.boolean().optional(),

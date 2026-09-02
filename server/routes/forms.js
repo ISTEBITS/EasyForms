@@ -18,6 +18,15 @@ import {
   handleGetPublicFormBySlug,
   handleGetMailStatus,
   handleGetTestUserActivities,
+  handleUpdateResponse,
+  handleDeleteSingleResponse,
+  handleBulkDeleteResponses,
+  handleBulkUpdateResponseStatus,
+  handleManualCreateResponse,
+  handleAddCollaborator,
+  handleRemoveCollaborator,
+  handleUpdateShareSettings,
+  handleGetSharedResponses,
 } from "../controllers/form.controllers.js";
 
 const router = express.Router();
@@ -35,6 +44,9 @@ const submitLimiter = rateLimit({
 router.get("/", checkCookies, handleGetAllForms);
 router.get("/mail/status", checkCookies, handleGetMailStatus);
 router.get("/test-users/activities", checkCookies, handleGetTestUserActivities);
+
+// Public shared responses endpoint
+router.get("/public/shared-responses/:shareToken", handleGetSharedResponses);
 
 // Get a public form published (supports optional API key auth via query param)
 router.get("/public/slug/:slug", checkApiKeyOptional, handleGetPublicFormBySlug);
@@ -55,6 +67,22 @@ router.delete("/:id", checkCookies, handleDeleteForm);
 // Get responses for a form
 router.get("/:id/responses", checkCookies, handleGetResponseForAForm);
 
+// Manual response insertion (protected)
+router.post("/:id/responses/manual", checkCookies, handleManualCreateResponse);
+
+// Bulk operations on responses (protected)
+router.post("/:id/responses/bulk-delete", checkCookies, handleBulkDeleteResponses);
+router.post("/:id/responses/bulk-update-status", checkCookies, handleBulkUpdateResponseStatus);
+
+// Single response update and delete (protected)
+router.put("/:id/responses/:responseId", checkCookies, handleUpdateResponse);
+router.delete("/:id/responses/:responseId", checkCookies, handleDeleteSingleResponse);
+
+// Collaborators and Sharing (protected)
+router.post("/:id/collaborators", checkCookies, handleAddCollaborator);
+router.delete("/:id/collaborators/:collaboratorId", checkCookies, handleRemoveCollaborator);
+router.patch("/:id/share-settings", checkCookies, handleUpdateShareSettings);
+
 //Submit a response (public, rate-limited, optional API key auth)
 router.post("/:id/responses", submitLimiter, checkApiKeyOptional, handleSubmitAResponse);
 
@@ -62,6 +90,7 @@ router.post("/:id/responses", submitLimiter, checkApiKeyOptional, handleSubmitAR
 router.get("/:id/check-status", handleCheckStatus);
 
 export default router;
+
 
 
 

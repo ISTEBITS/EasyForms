@@ -249,13 +249,13 @@ export function QuestionCard({
                     e.stopPropagation();
                     setShowConditioning(!showConditioning);
                   }}
-                  className="h-8 rounded-xs px-2 text-xs font-medium text-accent-5 hover:bg-accent-1 hover:text-foreground"
+                  className="h-8 rounded-xs px-2 text-sm font-medium text-accent-5 hover:bg-accent-1 hover:text-foreground"
                   title="Configure Conditioning & Logic Rules"
                 >
                   <GitBranch className="h-3.5 w-3.5 sm:mr-1 text-geist-success" />
                   <span className="hidden sm:inline">Logic</span>
                   {(question.conditions?.length || 0) > 0 && (
-                    <span className="ml-1 rounded-full bg-foreground px-1.5 py-0.2 text-xs font-mono text-background font-semibold">
+                    <span className="ml-1 rounded-full bg-foreground px-1.5 py-0.2 text-sm font-sans text-background font-semibold">
                       {question.conditions?.length}
                     </span>
                   )}
@@ -273,7 +273,7 @@ export function QuestionCard({
                 />
                 <Label
                   htmlFor={`required-${question.id}`}
-                  className="cursor-pointer text-xs font-medium text-accent-5"
+                  className="cursor-pointer text-sm font-medium text-accent-5"
                   onClick={(e) => e.stopPropagation()}
                 >
                   Required
@@ -303,7 +303,7 @@ export function QuestionCard({
                       e.stopPropagation();
                       onDuplicate();
                     }}
-                    className="cursor-pointer text-xs font-medium"
+                    className="cursor-pointer text-sm font-medium"
                   >
                     <Copy className="mr-2 h-3.5 w-3.5" />
                     Duplicate
@@ -315,7 +315,7 @@ export function QuestionCard({
                       onDelete();
                     }}
                     variant="destructive"
-                    className="cursor-pointer text-xs font-medium"
+                    className="cursor-pointer text-sm font-medium"
                   >
                     <Trash2 className="mr-2 h-3.5 w-3.5 text-geist-error" />
                     Delete
@@ -336,7 +336,7 @@ export function QuestionCard({
             />
             <Label
               htmlFor={`required-mobile-${question.id}`}
-              className="cursor-pointer text-xs text-accent-5 font-medium"
+              className="cursor-pointer text-sm text-accent-5 font-medium"
               onClick={(e) => e.stopPropagation()}
             >
               Required
@@ -356,7 +356,7 @@ export function QuestionCard({
                         ? "Describe this section or page (Markdown supported)..."
                         : "Add help text for respondents (Markdown supported)..."
                     }
-                    className="min-h-[38px] resize-none border-0 border-b border-transparent bg-transparent px-0 text-xs text-accent-5 hover:border-border focus:border-accent-8 focus:ring-0 placeholder:text-accent-4 font-mono"
+                    className="min-h-[38px] resize-none border-0 border-b border-transparent bg-transparent px-0 text-sm text-accent-5 hover:border-border focus:border-accent-8 focus:ring-0 placeholder:text-accent-4 font-sans"
                     rows={1}
                     onClick={(e) => e.stopPropagation()}
                   />
@@ -366,14 +366,14 @@ export function QuestionCard({
                     question.type !== "rating" &&
                     question.type !== "file_upload" && (
                       <div className="flex items-center gap-2 pt-1">
-                        <span className="text-xs font-mono uppercase font-semibold text-accent-5 shrink-0">
+                        <span className="text-sm font-sans font-semibold text-accent-5 shrink-0">
                           Placeholder:
                         </span>
                         <Input
                           value={question.placeholder || ""}
                           onChange={(e) => onUpdate({ placeholder: e.target.value })}
                           placeholder={`Custom placeholder for ${question.type.replace("_", " ")}...`}
-                          className="h-7 border-border bg-accent-1/40 px-2 text-xs text-foreground placeholder:text-accent-4 hover:border-border focus:border-accent-8"
+                          className="h-7 border-border bg-background px-2 text-sm text-foreground placeholder:text-accent-4 hover:border-border focus:border-accent-8"
                           onClick={(e) => e.stopPropagation()}
                         />
                       </div>
@@ -382,7 +382,7 @@ export function QuestionCard({
               ) : (
                 question.description && (
                   <div
-                    className="text-xs text-accent-5 leading-relaxed space-y-1"
+                    className="text-sm text-accent-5 leading-relaxed space-y-1"
                     dangerouslySetInnerHTML={{
                       __html: renderMarkdownPreview(question.description),
                     }}
@@ -395,7 +395,7 @@ export function QuestionCard({
           {/* Question Body Preview / Options Editing */}
           <div className="ml-11" onClick={(e) => e.stopPropagation()}>
             {question.type === "section_break" && (
-              <div className="rounded-sm border border-dashed border-border bg-accent-1/50 px-4 py-3 text-xs text-accent-6">
+              <div className="rounded-sm border border-dashed border-border bg-accent-1/50 px-4 py-3 text-sm text-accent-6">
                 📄 A new section page break will occur here in the public form.
               </div>
             )}
@@ -406,7 +406,7 @@ export function QuestionCard({
               <Input
                 placeholder={question.placeholder || "Short answer text"}
                 disabled
-                className="h-9 cursor-not-allowed rounded-sm border-border bg-accent-1/60 text-xs text-accent-4"
+                className="h-9 cursor-not-allowed rounded-sm border-border bg-accent-1/60 text-sm text-accent-4"
               />
             )}
 
@@ -414,7 +414,7 @@ export function QuestionCard({
               <Textarea
                 placeholder={question.placeholder || "Long answer text"}
                 disabled
-                className="min-h-[64px] cursor-not-allowed resize-none rounded-sm border-border bg-accent-1/60 text-xs text-accent-4"
+                className="min-h-[64px] cursor-not-allowed resize-none rounded-sm border-border bg-accent-1/60 text-sm text-accent-4"
               />
             )}
 
@@ -434,7 +434,7 @@ export function QuestionCard({
                       <CheckSquare className="h-4 w-4 text-accent-4 flex-shrink-0" />
                     )}
                     {question.type === "dropdown" && (
-                      <span className="w-4 text-center text-xs text-accent-4 flex-shrink-0 font-medium">
+                      <span className="w-4 text-center text-sm text-accent-4 flex-shrink-0 font-medium">
                         {index + 1}
                       </span>
                     )}
@@ -443,7 +443,7 @@ export function QuestionCard({
                       onChange={(e) =>
                         handleUpdateOption(option.id, e.target.value)
                       }
-                      className="h-8 border-0 border-b border-transparent bg-transparent px-0 text-xs font-medium text-foreground hover:border-border focus:border-accent-8 focus:ring-0"
+                      className="h-8 border-0 border-b border-transparent bg-transparent px-0 text-sm font-medium text-foreground hover:border-border focus:border-accent-8 focus:ring-0"
                     />
 
                     {/* Option Go-To Target Selector (Google Forms Style) */}
@@ -453,7 +453,7 @@ export function QuestionCard({
                         <select
                           value={option.gotoQuestionId || ""}
                           onChange={(e) => handleUpdateOptionGoto(option.id, e.target.value)}
-                          className="h-7 rounded-sm border border-border bg-background px-2 text-xs text-accent-5 hover:border-accent-8 focus:border-accent-8 outline-none font-sans"
+                          className="h-7 rounded-sm border border-border bg-background px-2 text-sm text-accent-5 hover:border-accent-8 focus:border-accent-8 outline-none font-sans"
                           onClick={(e) => e.stopPropagation()}
                           title="Go to section or question based on this answer"
                         >
@@ -480,7 +480,7 @@ export function QuestionCard({
                 ))}
                 <button
                   onClick={handleAddOption}
-                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-accent-5 transition-geist duration-150 hover:text-foreground"
+                  className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-accent-5 transition-geist duration-150 hover:text-foreground"
                 >
                   <Plus className="h-3.5 w-3.5 text-geist-success" />
                   Add option
@@ -502,7 +502,7 @@ export function QuestionCard({
                     />
                   ))}
                 </div>
-                <div className="flex items-center gap-1 text-xs text-accent-5">
+                <div className="flex items-center gap-1 text-sm text-accent-5">
                   <span>Scale:</span>
                   <input
                     type="number"
@@ -510,7 +510,7 @@ export function QuestionCard({
                     onChange={(e) =>
                       onUpdate({ maxRating: parseInt(e.target.value) || 5 })
                     }
-                    className="h-7 w-12 rounded-sm border border-border bg-background px-1.5 text-center text-xs text-foreground focus:border-accent-8 focus:outline-none"
+                    className="h-7 w-12 rounded-sm border border-border bg-background px-1.5 text-center text-sm text-foreground focus:border-accent-8 focus:outline-none"
                     min={1}
                     max={10}
                   />
@@ -519,7 +519,7 @@ export function QuestionCard({
             )}
 
             {question.type === "date" && (
-              <div className="flex h-9 items-center rounded-sm border border-border bg-accent-1/60 px-3 text-xs text-accent-4">
+              <div className="flex h-9 items-center rounded-sm border border-border bg-accent-1/60 px-3 text-sm text-accent-4">
                 <Calendar className="mr-2 h-3.5 w-3.5" />
                 YYYY - MM - DD
               </div>
@@ -528,7 +528,7 @@ export function QuestionCard({
             {question.type === "file_upload" && (
               <div className="rounded-sm border border-dashed border-border bg-accent-1/40 p-4 text-center">
                 <Upload className="mx-auto h-4 w-4 text-accent-4" />
-                <p className="mt-1.5 text-xs text-accent-5 font-medium">
+                <p className="mt-1.5 text-sm text-accent-5 font-medium">
                   File Upload Field (Respondents can attach files)
                 </p>
               </div>
@@ -542,12 +542,12 @@ export function QuestionCard({
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2.5">
                   <div className="flex items-center gap-2">
                     <SlidersHorizontal className="h-4 w-4 text-geist-success" />
-                    <span className="text-xs font-semibold text-foreground font-sans">
+                    <span className="text-sm font-semibold text-foreground font-sans">
                       Conditioning & Logic Rules
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-accent-5 font-mono uppercase font-semibold">
+                    <span className="text-sm text-accent-5 font-sans uppercase font-semibold">
                       MATCH:
                     </span>
                     <select
@@ -557,7 +557,7 @@ export function QuestionCard({
                           logicOperator: e.target.value as "AND" | "OR",
                         })
                       }
-                      className="h-7 rounded-sm border border-border bg-background px-2 text-xs text-foreground outline-none font-mono"
+                      className="h-7 rounded-sm border border-border bg-background px-2 text-sm text-foreground outline-none font-sans"
                     >
                       <option value="AND">ALL Rules (AND)</option>
                       <option value="OR">ANY Rule (OR)</option>
@@ -566,7 +566,7 @@ export function QuestionCard({
                 </div>
 
                 {!question.conditions || question.conditions.length === 0 ? (
-                  <p className="text-xs text-accent-5 font-sans italic py-1">
+                  <p className="text-sm text-accent-5 font-sans py-1">
                     No visibility conditions set. Question will always be shown.
                   </p>
                 ) : (
@@ -574,7 +574,7 @@ export function QuestionCard({
                     {question.conditions.map((rule) => (
                       <div
                         key={rule.id}
-                        className="flex flex-wrap items-center gap-2 rounded-sm border border-border bg-background p-2.5 text-xs shadow-xs"
+                        className="flex flex-wrap items-center gap-2 rounded-sm border border-border bg-background p-2.5 text-sm shadow-xs"
                       >
                         <select
                           value={rule.action}
@@ -583,7 +583,7 @@ export function QuestionCard({
                               action: e.target.value as "show" | "hide",
                             })
                           }
-                          className="h-7 rounded-sm border border-border bg-accent-1 px-2 text-xs text-foreground font-medium outline-none"
+                          className="h-7 rounded-sm border border-border bg-accent-1 px-2 text-sm text-foreground font-medium outline-none"
                         >
                           <option value="show">Show question if</option>
                           <option value="hide">Hide question if</option>
@@ -596,7 +596,7 @@ export function QuestionCard({
                               fieldId: e.target.value,
                             })
                           }
-                          className="h-7 max-w-[180px] truncate rounded-sm border border-border bg-background px-2 text-xs text-foreground outline-none font-sans"
+                          className="h-7 max-w-[180px] truncate rounded-sm border border-border bg-background px-2 text-sm text-foreground outline-none font-sans"
                         >
                           <option value="" disabled>
                             Select target question...
@@ -615,7 +615,7 @@ export function QuestionCard({
                               operator: e.target.value as ConditionOperator,
                             })
                           }
-                          className="h-7 rounded-sm border border-border bg-background px-2 text-xs text-accent-5 outline-none font-sans"
+                          className="h-7 rounded-sm border border-border bg-background px-2 text-sm text-accent-5 outline-none font-sans"
                         >
                           <option value="equals">Equals</option>
                           <option value="not_equals">Does not equal</option>
@@ -636,7 +636,7 @@ export function QuestionCard({
                                 })
                               }
                               placeholder="Value to match..."
-                              className="h-7 w-32 border border-border bg-background text-xs text-foreground placeholder:text-accent-4 focus:border-accent-8"
+                              className="h-7 w-32 border border-border bg-background text-sm text-foreground placeholder:text-accent-4 focus:border-accent-8"
                             />
                           )}
 
@@ -655,7 +655,7 @@ export function QuestionCard({
                 <button
                   onClick={handleAddCondition}
                   disabled={otherQuestions.length === 0}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground hover:text-geist-success transition-colors disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-geist-success transition-colors disabled:opacity-50"
                 >
                   <Plus className="h-3.5 w-3.5 text-geist-success" />
                   <span>Add Condition Rule</span>
