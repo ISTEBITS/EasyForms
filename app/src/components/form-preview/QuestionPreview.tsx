@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
-import { FileText, Loader, Star, Upload, X } from "lucide-react";
+import { FileText, Loader2, Star, Upload, X, Check } from "lucide-react";
 import { toast } from "sonner";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -18,6 +17,7 @@ import { renderMarkdownPreview, renderInlineMarkdownHtml } from "@/lib/form-head
 import { isQuestionVisible } from "@/lib/condition-evaluator";
 import type { Answer, Question } from "@/types/form";
 import type { PreviewDevice } from "./types";
+import { cn } from "@/lib/utils";
 
 interface QuestionPreviewProps {
   question: Question;
@@ -46,6 +46,7 @@ export function QuestionPreview({
 }: QuestionPreviewProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [localFileName, setLocalFileName] = useState<string | null>(null);
+  const [hoverRating, setHoverRating] = useState<number | null>(null);
 
   if (answers && !isQuestionVisible(question, answers)) {
     return null;
@@ -91,43 +92,50 @@ export function QuestionPreview({
   const ratingValue = typeof value === "number" ? value : Number(value) || 0;
   const questionCardPaddingClass =
     previewDevice === "auto"
-      ? "p-4 sm:p-5"
+      ? "p-5 sm:p-6"
       : previewDevice === "mobile"
         ? "p-4"
-        : "p-5";
+        : "p-6";
 
   return (
     <div
-      className={`rounded-sm border border-border bg-background ${questionCardPaddingClass}`}
+      className={`group/card rounded-md border border-border bg-background shadow-xs transition-all duration-150 focus-within:border-foreground/70 font-sans ${questionCardPaddingClass}`}
     >
-      <div className="mb-4 flex items-start gap-3">
-        <div className="inline-flex h-6 w-6 items-center justify-center rounded-sm bg-accent-2 text-xs text-accent-6">
-          {index}
-        </div>
-        <div className="min-w-0">
-          <Label className="text-sm font-medium text-foreground">
-            <span dangerouslySetInnerHTML={{ __html: renderInlineMarkdownHtml(question.title) }} />
-            {question.required && <span className="ml-1 text-error">*</span>}
-          </Label>
-          {question.description && (
-            <div
-              className="mt-1 text-xs text-accent-5 leading-relaxed space-y-1"
-              dangerouslySetInnerHTML={{
-                __html: renderMarkdownPreview(question.description),
-              }}
-            />
-          )}
+      {/* Question Header: Question number always shown without tick replacement */}
+      <div className="mb-4 flex items-start justify-between gap-3.5">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-xs font-sans text-xs font-semibold border border-border bg-accent-1 text-accent-7 mt-0.5">
+            {index}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <Label className="text-sm font-semibold text-foreground tracking-tight block leading-snug font-sans">
+              <span dangerouslySetInnerHTML={{ __html: renderInlineMarkdownHtml(question.title) }} />
+              {question.required && (
+                <span className="ml-1 text-red-400/70 font-bold" title="Required field">*</span>
+              )}
+            </Label>
+            {question.description && (
+              <div
+                className="mt-1.5 text-xs text-accent-5 leading-relaxed space-y-1 font-sans"
+                dangerouslySetInnerHTML={{
+                  __html: renderMarkdownPreview(question.description),
+                }}
+              />
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="space-y-3">
+      {/* Input Controls with blackish background and NO blue on-focus borders */}
+      <div className="space-y-3 pt-1">
         {question.type === "short_text" && (
           <Input
             value={textValue}
             onChange={(e) => onChange(e.target.value)}
-            placeholder={question.placeholder || "Enter your response"}
+            placeholder={question.placeholder || "Type your answer here..."}
             required={question.required}
-            className="h-10 border-border bg-accent-1 text-foreground placeholder:text-accent-4"
+            className="h-10 rounded-sm border-[#262626] bg-[#0c0c0c] text-foreground text-sm font-sans placeholder:text-accent-4 focus:bg-black focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:border-foreground focus:border-foreground transition-all"
           />
         )}
 
@@ -135,10 +143,10 @@ export function QuestionPreview({
           <Textarea
             value={textValue}
             onChange={(e) => onChange(e.target.value)}
-            placeholder={question.placeholder || "Enter detailed response"}
+            placeholder={question.placeholder || "Type your detailed response..."}
             required={question.required}
             rows={4}
-            className="resize-none border-border bg-accent-1 text-foreground placeholder:text-accent-4"
+            className="resize-y min-h-[96px] rounded-sm border-[#262626] bg-[#0c0c0c] text-foreground text-sm font-sans placeholder:text-accent-4 focus:bg-black focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:border-foreground focus:border-foreground transition-all"
           />
         )}
 
@@ -147,9 +155,9 @@ export function QuestionPreview({
             type="email"
             value={textValue}
             onChange={(e) => onChange(e.target.value)}
-            placeholder={question.placeholder || "name@organization.com"}
+            placeholder={question.placeholder || "name@company.com"}
             required={question.required}
-            className="h-10 border-border bg-accent-1 text-foreground placeholder:text-accent-4"
+            className="h-10 rounded-sm border-[#262626] bg-[#0c0c0c] text-foreground text-sm font-sans placeholder:text-accent-4 focus:bg-black focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:border-foreground focus:border-foreground transition-all"
           />
         )}
 
@@ -160,7 +168,7 @@ export function QuestionPreview({
             onChange={(e) => onChange(e.target.value)}
             placeholder={question.placeholder || "0"}
             required={question.required}
-            className="h-10 border-border bg-accent-1 text-foreground placeholder:text-accent-4"
+            className="h-10 rounded-sm border-[#262626] bg-[#0c0c0c] text-foreground text-sm font-sans placeholder:text-accent-4 focus:bg-black focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:border-foreground focus:border-foreground transition-all"
           />
         )}
 
@@ -170,7 +178,7 @@ export function QuestionPreview({
             value={selectValue}
             onChange={(e) => onChange(e.target.value)}
             required={question.required}
-            className="h-10 border-border bg-accent-1 text-foreground [color-scheme:dark]"
+            className="h-10 rounded-sm border-[#262626] bg-[#0c0c0c] text-foreground text-sm font-sans focus:bg-black focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:border-foreground focus:border-foreground transition-all"
           />
         )}
 
@@ -180,60 +188,80 @@ export function QuestionPreview({
             onValueChange={onChange}
             className="space-y-2"
           >
-            {question.options?.map((option) => (
-              <label
-                key={option.id}
-                className="flex cursor-pointer items-center gap-3 rounded-sm border border-border bg-accent-1 p-3 transition-geist duration-150 hover:border-accent-8"
-              >
-                <RadioGroupItem
-                  value={option.value}
-                  id={option.id}
-                />
-                <span className="text-sm text-foreground">
-                  {option.label}
-                </span>
-              </label>
-            ))}
+            {question.options?.map((option) => {
+              const isSelected = selectValue === option.value;
+              return (
+                <label
+                  key={option.id}
+                  className={`flex cursor-pointer items-center justify-between gap-3 rounded-sm border p-3.5 transition-all duration-150 ${isSelected
+                      ? "border-foreground bg-accent-1 text-foreground shadow-2xs"
+                      : "border-[#262626] bg-[#0c0c0c] hover:border-accent-5 hover:bg-[#141414] text-accent-7"
+                    }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <RadioGroupItem
+                      value={option.value}
+                      id={option.id}
+                      className={cn("border-[#444] text-foreground focus:ring-0 focus:outline-none", isSelected && "bg-foreground text-foreground")}
+                    />
+                    <span className="text-sm font-medium text-foreground font-sans truncate">
+                      {option.label}
+                    </span>
+                  </div>
+                </label>
+              );
+            })}
           </RadioGroup>
         )}
 
         {question.type === "checkbox" && (
           <div className="space-y-2">
-            {question.options?.map((option) => (
-              <label
-                key={option.id}
-                className="flex cursor-pointer items-center gap-3 rounded-sm border border-border bg-accent-1 p-3 transition-geist duration-150 hover:border-accent-8"
-              >
-                <Checkbox
-                  id={option.id}
-                  checked={checkboxValues.includes(option.value)}
-                  onCheckedChange={(checked) => {
+            {question.options?.map((option) => {
+              const isChecked = checkboxValues.includes(option.value);
+
+              return (
+                <label
+                  key={option.id}
+                  onClick={() => {
                     const currentValues = checkboxValues;
-                    if (checked) {
-                      onChange([...currentValues, option.value]);
+                    if (isChecked) {
+                      onChange(currentValues.filter((v) => v !== option.value));
                     } else {
-                      onChange(
-                        currentValues.filter((v) => v !== option.value),
-                      );
+                      onChange([...currentValues, option.value]);
                     }
                   }}
-                />
-                <span className="text-sm text-foreground">
-                  {option.label}
-                </span>
-              </label>
-            ))}
+                  className={`flex cursor-pointer items-center justify-between gap-3 rounded-sm border p-3.5 transition-all duration-150 ${isChecked
+                      ? "border-foreground bg-accent-1 text-foreground shadow-2xs"
+                      : "border-[#262626] bg-[#0c0c0c] hover:border-accent-5 hover:bg-[#141414] text-accent-7"
+                    }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-xs border transition-colors ${isChecked
+                          ? "border-foreground bg-foreground text-background"
+                          : "border-border bg-background"
+                        }`}
+                    >
+                      {isChecked && <Check className="h-3 w-3 stroke-[3]" />}
+                    </div>
+                    <span className="text-sm font-medium text-foreground font-sans truncate">
+                      {option.label}
+                    </span>
+                  </div>
+                </label>
+              );
+            })}
           </div>
         )}
 
         {question.type === "dropdown" && (
           <Select value={selectValue} onValueChange={onChange}>
-            <SelectTrigger className="h-10 w-full border-border bg-accent-1 text-foreground">
+            <SelectTrigger className="h-10 w-full rounded-sm border-[#262626] bg-[#0c0c0c] text-foreground text-sm font-sans focus:bg-black focus:outline-none focus:ring-0 focus:border-foreground transition-all">
               <SelectValue placeholder="Select an option" />
             </SelectTrigger>
-            <SelectContent className="border-border bg-background text-foreground">
+            <SelectContent className="rounded-sm border-border bg-[#0c0c0c] text-foreground shadow-md">
               {question.options?.map((option) => (
-                <SelectItem key={option.id} value={option.value}>
+                <SelectItem key={option.id} value={option.value} className="rounded-xs text-sm font-sans">
                   {option.label}
                 </SelectItem>
               ))}
@@ -242,47 +270,63 @@ export function QuestionPreview({
         )}
 
         {question.type === "rating" && (
-          <div className="flex items-center gap-1 py-1">
-            {[...Array(question.maxRating || 5)].map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => onChange(i + 1)}
-                className="rounded-xs p-1 transition-geist duration-150"
-              >
-                <Star
-                  className={`h-5 w-5 ${
-                    ratingValue > i
-                      ? "fill-foreground text-foreground"
-                      : "text-accent-2"
-                  }`}
-                />
-              </button>
-            ))}
+          <div className="space-y-2 py-1">
+            <div className="flex items-center gap-2">
+              {[...Array(question.maxRating || 5)].map((_, i) => {
+                const starIndex = i + 1;
+                const isLit = (hoverRating !== null ? hoverRating : ratingValue) >= starIndex;
+
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onMouseEnter={() => setHoverRating(starIndex)}
+                    onMouseLeave={() => setHoverRating(null)}
+                    onClick={() => onChange(starIndex)}
+                    className="rounded-sm p-2 transition-all duration-150 hover:bg-accent-1 active:scale-95 cursor-pointer"
+                  >
+                    <Star
+                      className={`h-6 w-6 transition-all duration-150 ${isLit
+                          ? "fill-foreground text-foreground scale-105"
+                          : "text-accent-3 fill-transparent hover:text-accent-5"
+                        }`}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+
+            {ratingValue > 0 && (
+              <p className="text-xs text-accent-5 font-sans">
+                Rating selected: <span className="font-semibold text-foreground">{ratingValue}</span> / {question.maxRating || 5}
+              </p>
+            )}
           </div>
         )}
 
         {question.type === "file_upload" && (
           <div className="space-y-3">
             {value ? (
-              <div className="flex items-center justify-between rounded-sm border border-border bg-accent-1 p-3">
+              <div className="flex items-center justify-between rounded-sm border border-[#262626] bg-[#0c0c0c] p-3.5 shadow-2xs">
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="inline-flex h-8 w-8 items-center justify-center rounded-sm border border-border bg-accent-1">
-                    <FileText className="h-4 w-4 text-accent-5" />
+                  <div className="inline-flex h-9 w-9 items-center justify-center rounded-sm border border-border bg-background shrink-0">
+                    <FileText className="h-4.5 w-4.5 text-foreground" />
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate text-sm text-foreground">
+                    <p className="truncate text-sm font-medium text-foreground font-sans">
                       {displayFileName || "Attached File"}
                     </p>
-                    <p className="text-xs text-accent-4">
-                      Ready for submission
+                    <p className="text-xs text-emerald-500 font-sans flex items-center gap-1">
+                      <Check className="h-3 w-3" />
+                      <span>Ready for submission</span>
                     </p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={handleRemoveFile}
-                  className="rounded-xs p-1 text-accent-4 transition-geist duration-150 hover:text-error"
+                  className="rounded-xs p-1.5 text-accent-5 transition-colors hover:bg-accent-2 hover:text-foreground cursor-pointer"
+                  title="Remove file"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -290,31 +334,32 @@ export function QuestionPreview({
             ) : (
               <div
                 onClick={() => !isDisabled && fileInputRef.current?.click()}
-                className={`rounded-sm border-2 border-dashed p-6 text-center transition-geist duration-150 ${
-                  isDisabled
-                    ? "cursor-not-allowed border-accent-2 bg-accent-1/60 opacity-60"
-                    : "cursor-pointer border-border bg-accent-1 hover:border-accent-8"
-                }`}
+                className={`rounded-md border border-dashed p-6 text-center transition-all duration-150 ${isDisabled
+                    ? "cursor-not-allowed border-[#262626] bg-[#0c0c0c]/40 opacity-60"
+                    : "cursor-pointer border-[#262626] bg-[#0c0c0c] hover:border-foreground/50 hover:bg-[#121212] active:scale-[0.99]"
+                  }`}
               >
                 {uploading ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <Loader className="h-5 w-5 animate-spin text-accent-4" />
-                    <p className="text-sm text-accent-5">Uploading...</p>
+                  <div className="flex flex-col items-center gap-2 py-2">
+                    <Loader2 className="h-6 w-6 animate-spin text-foreground" />
+                    <p className="text-sm font-medium text-foreground font-sans">Uploading attachment...</p>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center gap-2">
-                    <Upload
-                      className={`h-5 w-5 ${isDisabled ? "text-accent-3" : "text-accent-6"}`}
-                    />
+                  <div className="flex flex-col items-center gap-2 py-2">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-sm border border-border bg-background shadow-2xs">
+                      <Upload
+                        className={`h-4.5 w-4.5 ${isDisabled ? "text-accent-3" : "text-foreground"}`}
+                      />
+                    </div>
                     <p
-                      className={`text-sm ${isDisabled ? "text-accent-3" : "text-accent-6"}`}
+                      className={`text-sm font-medium font-sans ${isDisabled ? "text-accent-4" : "text-foreground"}`}
                     >
                       {isDisabled
                         ? "Authentication required to upload"
-                        : "Click to upload file"}
+                        : "Click or drag files here to upload"}
                     </p>
-                    <p className="text-xs text-accent-4">
-                      PDF, DOC, PNG, JPG up to 5MB
+                    <p className="text-xs text-accent-5 font-sans">
+                      Supports files up to 10MB
                     </p>
                   </div>
                 )}

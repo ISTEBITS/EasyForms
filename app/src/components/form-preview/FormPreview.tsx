@@ -3,8 +3,9 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
-  Loader,
+  Loader2,
   Shield,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -74,7 +75,6 @@ export function FormPreview({
     previewShellClass,
     bannerHeightClass,
     headerPaddingClass,
-    questionGridClass,
   } = getPreviewClasses(previewDevice);
 
   const handleVerification = async (token: string, email: string) => {
@@ -85,7 +85,7 @@ export function FormPreview({
       } else {
         setGoogleToken(token);
         setDisplayEmail(email);
-        toast.success("Authentication successful", {
+        toast.success("Identity verified", {
           icon: <Shield className="h-4 w-4" />,
         });
       }
@@ -125,8 +125,8 @@ export function FormPreview({
     setActivePageIndex((prev) => Math.min(prev + 1, pages.length - 1));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (isSubmitting) return;
     if (Date.now() < nextNavigationGuardUntilRef.current) return;
     if (activePageIndex < pages.length - 1) {
@@ -153,7 +153,7 @@ export function FormPreview({
       setSubmitted(true);
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Failed to submit form";
+        error instanceof Error ? error.message : "Failed to submit response";
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -176,18 +176,15 @@ export function FormPreview({
   }
 
   return (
-    <div className={previewShellClass}>
+    <div className={`${previewShellClass} font-sans`}>
       <form onSubmit={handleSubmit} className="relative space-y-6">
-        {(form.isTestUserForm || form.owner?.role === "test_user") && (
-          <div className="pointer-events-none absolute right-3 top-3 z-30 rounded-sm border border-border bg-accent-1 px-2.5 py-1 text-xs font-mono font-semibold uppercase tracking-wider text-accent-5">
-            POWERED BY EASYFORMS
-          </div>
-        )}
-
+        {/* Form Header Card */}
         <PreviewHeader
           form={form}
           activePageIndex={activePageIndex}
           pages={pages}
+          answers={answers}
+          onSelectPage={(index) => setActivePageIndex(index)}
           bannerImageUrl={bannerImageUrl}
           bannerPositionX={bannerPositionX}
           bannerPositionY={bannerPositionY}
@@ -195,21 +192,25 @@ export function FormPreview({
           headerPaddingClass={headerPaddingClass}
         />
 
+        {/* Real-time Progress Bar */}
         {form.settings.showProgressBar && answerableQuestions.length > 0 && (
-          <div className="rounded-sm border border-border bg-accent-1/60 p-4">
-            <div className="mb-2 flex items-center justify-between text-xs text-accent-5">
-              <span>Completion</span>
-              <span>{Math.round(progress)}%</span>
+          <div className="rounded-md border border-border bg-background p-4 shadow-xs space-y-2">
+            <div className="flex items-center justify-between text-sm font-sans text-accent-5">
+              <span>Completion Progress</span>
+              <span className="font-medium text-foreground">
+                {answeredCount} of {answerableQuestions.length} ({Math.round(progress)}%)
+              </span>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-accent-2">
+            <div className="h-1.5 overflow-hidden rounded-xs bg-accent-2">
               <div
-                className="h-full rounded-full bg-foreground transition-all duration-300"
+                className="h-full rounded-sm bg-foreground transition-all duration-300 ease-out"
                 style={{ width: `${progress}%` }}
               />
             </div>
           </div>
         )}
 
+        {/* Google Verification if required */}
         {form.settings.limitOneResponse && !googleToken && (
           <GoogleVerification
             key={`google-verification-${verificationResetKey}`}
@@ -218,45 +219,48 @@ export function FormPreview({
         )}
 
         {googleToken && (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-border bg-accent-1 p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-sm border border-border bg-accent-1">
-                <Shield className="h-4 w-4 text-accent-7" />
+          <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-background p-3.5 shadow-xs font-sans">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm border border-border bg-accent-1 text-foreground">
+                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
               </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">
-                  Identity Verified
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground truncate font-sans">
+                  Verified Identity
                 </p>
-                <p className="text-xs text-accent-5">{displayEmail}</p>
+                <p className="text-sm text-accent-5 truncate font-sans">{displayEmail}</p>
               </div>
             </div>
             <Button
               type="button"
-              variant="secondary"
+              variant="outline"
               onClick={handleSwitchAccount}
-              size="sm"
+              size="xs"
+              className="rounded-sm text-sm font-sans shrink-0 h-7 border-border cursor-pointer"
             >
-              Switch Account
+              Switch
             </Button>
           </div>
         )}
 
+        {/* Active Page Header (if titled) */}
         {(activePage.title || activePage.description) && (
-          <div className="rounded-sm border border-border bg-accent-1/60 p-4">
+          <div className="rounded-md border border-border bg-accent-1/40 p-4 sm:p-5 font-sans">
             {activePage.title && (
-              <h3 className="text-base font-semibold text-foreground">
+              <h3 className="text-base font-semibold text-foreground tracking-tight font-sans">
                 {activePage.title}
               </h3>
             )}
             {activePage.description && (
-              <p className="mt-1 text-sm text-accent-5">
+              <p className="mt-1 text-sm text-accent-5 leading-relaxed font-sans">
                 {activePage.description}
               </p>
             )}
           </div>
         )}
 
-        <div className={questionGridClass}>
+        {/* Sequential Questions Stack */}
+        <div className="space-y-4">
           {activePage.questions.map((question, index) => (
             <QuestionPreview
               key={question.id}
@@ -274,17 +278,19 @@ export function FormPreview({
           ))}
         </div>
 
+        {/* Bottom Navigation & Action Bar */}
         {answerableQuestions.length > 0 && (
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-3 pt-4 border-t border-border mt-8 font-sans">
             <Button
               type="button"
-              variant="secondary"
+              variant="outline"
               onClick={() =>
                 setActivePageIndex((prev) => Math.max(prev - 1, 0))
               }
               disabled={activePageIndex === 0 || isSubmitting}
+              className="rounded-sm px-4 h-9 text-sm font-medium font-sans border-border cursor-pointer"
             >
-              <ChevronLeft className="mr-2 h-4 w-4" />
+              <ChevronLeft className="mr-1 h-3.5 w-3.5" />
               Back
             </Button>
 
@@ -293,10 +299,10 @@ export function FormPreview({
                 type="button"
                 onClick={handleNextPage}
                 disabled={isUploading || isSubmitting}
-                variant="default"
+                className="rounded-sm px-5 h-9 text-sm font-medium bg-foreground text-background hover:bg-accent-7 font-sans cursor-pointer"
               >
-                Next Section
-                <ChevronRight className="ml-2 h-4 w-4" />
+                <span>Continue</span>
+                <ChevronRight className="ml-1 h-3.5 w-3.5" />
               </Button>
             ) : (
               <Button
@@ -306,22 +312,22 @@ export function FormPreview({
                   isUploading ||
                   isSubmitting
                 }
-                variant="default"
+                className="rounded-sm px-5 h-9 text-sm font-medium bg-foreground text-background hover:bg-accent-7 shadow-xs font-sans cursor-pointer"
               >
                 {isSubmitting ? (
-                  <span className="inline-flex items-center gap-2">
-                    <Loader className="h-4 w-4 animate-spin" />
+                  <span className="inline-flex items-center gap-2 font-sans">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     Submitting...
                   </span>
                 ) : isUploading ? (
-                  <span className="inline-flex items-center gap-2">
-                    <Loader className="h-4 w-4 animate-spin" />
-                    Processing Upload...
+                  <span className="inline-flex items-center gap-2 font-sans">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Uploading...
                   </span>
                 ) : form.settings.limitOneResponse && !googleToken ? (
-                  <span className="inline-flex items-center gap-2">
-                    <Shield className="h-4 w-4" />
-                    Verify Identity to Continue
+                  <span className="inline-flex items-center gap-2 font-sans">
+                    <Shield className="h-3.5 w-3.5" />
+                    Verify to Submit
                   </span>
                 ) : (
                   "Submit Response"
