@@ -12,6 +12,8 @@ import AuthRoute from './routes/auth.js';
 import UploadRoute from './routes/uploads.js';
 import FormRoute from './routes/forms.js';
 import ApiKeyRoute from './routes/api-keys.js';
+import MailRoute from './routes/mail.routes.js';
+import { seedDefaultTemplates } from './services/mail.service.js';
 
 
 
@@ -69,6 +71,7 @@ app.use('/api/auth', authLimiter, AuthRoute);
 app.use('/api/upload', uploadLimiter, UploadRoute);
 app.use('/api/forms', apiLimiter, FormRoute);
 app.use('/api/api-keys', apiLimiter, ApiKeyRoute);
+app.use('/api/admin/mail', apiLimiter, MailRoute);
 
 app.use((err, req, res, next) => {
   const statusCode = err.statusCode || 500;
@@ -84,6 +87,7 @@ const PORT = process.env.PORT || 3001;
 async function startServer() {
   try {
     await connectDB();
+    await seedDefaultTemplates();
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });

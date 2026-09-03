@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Table as TableIcon,
   BarChart3,
@@ -11,6 +12,7 @@ import {
   ChevronLeft,
   Check,
   Eye,
+  LayoutGrid,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -68,6 +70,7 @@ export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
   currentUserEmail,
   currentUserId,
 }) => {
+  const navigate = useNavigate();
   const isViewer = currentUserAccess ? !currentUserAccess.canEdit : false;
   const canManageCollaborators = currentUserAccess ? currentUserAccess.canManageCollaborators : true;
 
@@ -89,54 +92,74 @@ export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
   }, [onlineCollaborators]);
 
   return (
-    <header className="space-y-3 pb-3 border-b border-border">
+    <header className="space-y-3 pb-3 border-b border-border font-sans">
       {/* Top Breadcrumb & Actions Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5 min-w-0">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
           <button
             onClick={onBack}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-border bg-background text-accent-5 hover:bg-accent-1 hover:text-foreground transition-colors cursor-pointer"
-            title="Return to Dashboard"
+            title="Back"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="truncate text-base font-semibold text-foreground font-sans tracking-tight">
-                {form.title || "Untitled Form"}
-              </h1>
-              <span className="inline-flex items-center rounded-sm border border-border bg-accent-1 px-2 py-0.5 text-sm font-sans text-accent-6">
-                {totalResponses} {totalResponses === 1 ? "response" : "responses"}
+
+          <div className="h-4 w-px bg-border flex-shrink-0 hidden sm:block" />
+
+          {/* Segmented Form Navigation Pill [Builder | Responses] */}
+          <div className="flex items-center rounded-sm bg-accent-1 border border-border p-0.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => navigate(`/editor/${form.id || form._id}${window.location.search || ""}`)}
+              className="px-3 py-1 rounded-xs text-sm font-medium text-accent-5 hover:text-foreground hover:bg-accent-2/50 flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Builder</span>
+            </button>
+            <button
+              type="button"
+              className="px-3 py-1 rounded-xs text-sm font-medium bg-background text-foreground shadow-xs flex items-center gap-1.5 transition-all"
+            >
+              <TableIcon className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Responses</span>
+            </button>
+          </div>
+
+          <div className="min-w-0 flex items-center gap-2">
+            <h1 className="truncate text-sm sm:text-base font-semibold text-foreground font-sans tracking-tight max-w-xs sm:max-w-sm">
+              {form.title || "Untitled Form"}
+            </h1>
+            <span className="hidden sm:inline-flex items-center rounded-sm border border-border bg-accent-1 px-2.5 py-0.5 text-sm font-sans text-accent-6">
+              {totalResponses} {totalResponses === 1 ? "response" : "responses"}
+            </span>
+
+            {/* View-Only Badge for Viewers */}
+            {isViewer && (
+              <span className="inline-flex items-center gap-1 rounded-sm border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-sm font-medium text-amber-500 font-sans">
+                <Eye className="h-3.5 w-3.5" />
+                <span>View only</span>
               </span>
+            )}
 
-              {/* View-Only Badge for Viewers */}
-              {isViewer && (
-                <span className="inline-flex items-center gap-1 rounded-sm border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-500 font-sans">
-                  <Eye className="h-3 w-3" />
-                  <span>View only</span>
-                </span>
-              )}
-
-              {/* Google Sheets-style Auto-Save Status Indicator */}
-              {!isViewer && saveStatus === "saving" && (
-                <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-sans text-accent-5 animate-pulse">
-                  <span className="h-2 w-2 rounded-full bg-amber-500" />
-                  <span>Saving...</span>
-                </span>
-              )}
-              {!isViewer && saveStatus === "saved" && (
-                <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-sans text-accent-5">
-                  <Check className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400" />
-                  <span>All changes saved to cloud</span>
-                </span>
-              )}
-              {!isViewer && saveStatus === "error" && (
-                <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-sans text-red-500">
-                  <span className="h-2 w-2 rounded-full bg-red-500" />
-                  <span>Failed to save changes</span>
-                </span>
-              )}
-            </div>
+            {/* Google Sheets-style Auto-Save Status Indicator */}
+            {!isViewer && saveStatus === "saving" && (
+              <span className="hidden md:inline-flex items-center gap-1.5 px-2 py-0.5 text-sm font-sans text-accent-5 animate-pulse">
+                <span className="h-2 w-2 rounded-full bg-amber-500" />
+                <span>Saving...</span>
+              </span>
+            )}
+            {!isViewer && saveStatus === "saved" && (
+              <span className="hidden md:inline-flex items-center gap-1.5 px-2 py-0.5 text-sm font-sans text-accent-5">
+                <Check className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400" />
+                <span>All changes saved</span>
+              </span>
+            )}
+            {!isViewer && saveStatus === "error" && (
+              <span className="hidden md:inline-flex items-center gap-1.5 px-2 py-0.5 text-sm font-sans text-red-500">
+                <span className="h-2 w-2 rounded-full bg-red-500" />
+                <span>Failed to save</span>
+              </span>
+            )}
           </div>
         </div>
 
@@ -168,18 +191,18 @@ export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
                       <TooltipTrigger>
                         <div
                           style={{ backgroundColor: c.color }}
-                          className={`relative flex size-7 shrink-0 items-center justify-center rounded-full border-2 text-white text-[10px] font-bold shadow-xs cursor-pointer select-none transition-transform hover:scale-110 hover:z-20 ${
+                          className={`relative flex size-7 shrink-0 items-center justify-center rounded-full border-2 text-white text-sm font-bold shadow-xs cursor-pointer select-none transition-transform hover:scale-110 hover:z-20 ${
                             isSelf ? "border-foreground ring-1 ring-background" : "border-background"
                           }`}
                         >
                           {initials}
                         </div>
                       </TooltipTrigger>
-                      <TooltipContent side="bottom" className="text-xs">
+                      <TooltipContent side="bottom" className="text-sm">
                         <div className="font-semibold">
                           {c.name} {isSelf ? "(You)" : ""} {c.email ? `(${c.email})` : ""}
                         </div>
-                        <div className="text-accent-3 text-[11px] flex items-center gap-1 mt-0.5">
+                        <div className="text-accent-3 text-sm flex items-center gap-1 mt-0.5">
                           <span className="inline-block size-1.5 rounded-full" style={{ backgroundColor: c.color }} />
                           {activityDesc}
                         </div>
@@ -219,14 +242,14 @@ export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
           {canManageCollaborators && (
             <Button
               variant="outline"
-              size="xs"
+              size="sm"
               onClick={onOpenShare}
-              className="rounded-sm gap-1.5 font-sans h-8"
+              className="rounded-sm gap-1.5 font-sans h-8 text-sm"
             >
               <Share2 className="h-3.5 w-3.5 text-accent-6" />
               <span>Share</span>
               {collaboratorCount > 0 && (
-                <span className="ml-1 inline-flex h-4 items-center justify-center rounded-xs bg-accent-2 px-1 text-[10px] font-sans text-foreground font-medium">
+                <span className="ml-1 inline-flex h-4 items-center justify-center rounded-xs bg-accent-2 px-1.5 text-sm font-sans text-foreground font-medium">
                   {collaboratorCount}
                 </span>
               )}

@@ -3,7 +3,35 @@
 All notable changes to this project will be documented in this file.
 
 This project follows **Semantic Versioning (SemVer)**:  
-MAJOR.MINOR.PATCH (e.g., 2.1.0)
+MAJOR.MINOR.PATCH (e.g., 2.5.0)
+
+## [2.5.0] - 2026-09-03
+
+### Added & Enhanced (App & Server)
+- **Centralized Mail Service & Multi-Provider Delivery Engine**:
+  - Implemented centralized Mail Service (`server/services/mail.service.js`) with dynamic SMTP (Nodemailer) and Mailtrap API/Sandbox transporter resolution.
+  - Native pure HTML email template rendering with `{{token}}` variable interpolation.
+  - Automatic database-backed template resolution with graceful fallbacks for invitations and receipts.
+  - Auto-seeding of default HTML email templates on server startup (`seedDefaultTemplates()`).
+- **Admin Mail Templates & Mailer Studio**:
+  - Protected admin routes (`/api/admin/mail/*`) with `checkCookies` + `requireAdmin` RBAC enforcement.
+  - Interactive Master-Detail Email Template Studio (`app/src/pages/MailTemplatesPage.tsx`) with 2-column layout and mobile dropdown picker.
+  - Full HTML code editor with 1-click starter layout presets (*Modern Dark*, *Clean Light*, *Invitation*, *Receipt*).
+  - 1-click dynamic variable token pills (`{{name}}`, `{{formTitle}}`, `{{role}}`, `{{accessUrl}}`, `{{submittedAt}}`).
+  - Instant 0ms live HTML iframe preview.
+  - Live test email dispatcher with customizable sample token values.
+  - Added "Email Templates" navigation link to admin sidebar and navigation shell (`ProtectedAppShell.tsx`).
+- **Dashboard & Response Navigation UX Overhaul**:
+  - Added direct 1-click action buttons on form cards (`Edit`, `Responses`, `Share`) in both Grid and List views (`DashboardWorkspace.tsx`).
+  - Added universal segmented mode switcher `[Builder | Responses]` in Form Editor and Responses Header.
+  - Improved Back navigation across editor and response views to seamlessly return to the previous route.
+- **Landing Page Open-Source Conversion & Community Overhaul**:
+  - Refined landing page hero and feature messaging to focus on open-source community contributions and developer empowerment.
+  - Added maintained-by avatar pill (`iste-logo.png` & `logo.svg`) highlighting ISTE BITS Sindri.
+  - Real-time GitHub community contributors showcase and statistics integration.
+  - Strict typography and design system alignment (zero `text-xs`, minimum font size `text-sm`, `font-mono` limited to code blocks).
+
+---
 
 ## [2.4.0] - 2026-09-03
 

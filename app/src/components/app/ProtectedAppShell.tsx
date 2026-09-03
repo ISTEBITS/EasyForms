@@ -10,6 +10,7 @@ import {
   Menu,
   X,
   Search,
+  Mail,
 } from "lucide-react";
 import Logo from "@/components/ui/Logo";
 import { useAuth } from "@/context/auth";
@@ -29,7 +30,7 @@ import {
 } from "@/components/ui/skeleton-new";
 
 type NavTab = {
-  key: "dashboard" | "editor" | "responses" | "api-keys" | "activity";
+  key: "dashboard" | "editor" | "responses" | "api-keys" | "activity" | "mail";
   label: string;
   icon: ComponentType<{ className?: string }>;
   to: string;
@@ -72,6 +73,7 @@ export default function ProtectedAppShell() {
   const responsesMatch = matchPath("/form/:id/responses", location.pathname);
   const apiKeysMatch = matchPath("/api-keys", location.pathname);
   const activityMatch = matchPath("/activity", location.pathname);
+  const mailMatch = matchPath("/mail", location.pathname);
 
   const activeKey: NavTab["key"] = editorMatch
     ? "editor"
@@ -85,7 +87,9 @@ export default function ProtectedAppShell() {
             ? "api-keys"
             : activityMatch
               ? "activity"
-              : "dashboard";
+              : mailMatch
+                ? "mail"
+                : "dashboard";
 
   const tabs: NavTab[] = [
     {
@@ -117,13 +121,20 @@ export default function ProtectedAppShell() {
       active: activeKey === "api-keys",
     },
     {
+      key: "mail" as const,
+      label: "Email Templates",
+      icon: Mail,
+      to: withScope("/mail"),
+      active: activeKey === "mail",
+    },
+    {
       key: "activity" as const,
       label: "Activity",
       icon: Activity,
       to: withScope("/activity"),
       active: activeKey === "activity",
     },
-  ].filter((tab) => !(user?.role === "test_user" && tab.key === "activity"));
+  ].filter((tab) => !(user?.role === "test_user" && (tab.key === "activity" || tab.key === "mail")));
 
 
   useEffect(() => {
@@ -183,10 +194,10 @@ export default function ProtectedAppShell() {
               </span>
             </Link>
 
-            <span className="text-accent-4 text-xs font-sans hidden sm:inline-block">/</span>
+            <span className="text-accent-4 text-sm font-sans hidden sm:inline-block">/</span>
 
-            <div className="hidden sm:flex items-center gap-2 rounded-full border border-border bg-accent-1 px-2.5 py-0.5 font-sans text-xs uppercase font-semibold text-accent-6">
-              <span className={`h-1.5 w-1.5 rounded-full ${isAdmin ? "bg-blue-500" : "bg-purple-500"}`} />
+            <div className="hidden sm:flex items-center gap-2 rounded-full border border-border bg-accent-1 px-3 py-0.5 font-sans text-sm font-semibold text-accent-6">
+              <span className={`h-2 w-2 rounded-full ${isAdmin ? "bg-blue-500" : "bg-purple-500"}`} />
               <span className="truncate max-w-[160px]">
                 {isAdmin ? "Admin Workspace" : "Test User"}
               </span>
@@ -198,20 +209,20 @@ export default function ProtectedAppShell() {
             <button
               type="button"
               onClick={() => setIsGlobalSearchOpen(true)}
-              className="flex rounded-full items-center justify-between gap-3 h-8 w-fit sm:w-60 md:w-72 sm:rounded-sm border border-border bg-accent-1/50 px-2.5 text-xs text-accent-5 hover:border-accent-6 hover:text-foreground transition-all cursor-pointer"
+              className="flex rounded-full items-center justify-between gap-3 h-9 w-fit sm:w-60 md:w-72 sm:rounded-sm border border-border bg-accent-1/50 px-3 text-sm text-accent-5 hover:border-accent-6 hover:text-foreground transition-all cursor-pointer"
             >
               <div className="flex items-center gap-2 min-w-0">
-                <Search className="h-3.5 w-3.5 text-accent-5 shrink-0" />
-                <span className="hidden truncate font-sans text-xs">Search forms, pages...</span>
+                <Search className="h-4 w-4 text-accent-5 shrink-0" />
+                <span className="hidden truncate font-sans text-sm">Search forms, pages...</span>
               </div>
-              <kbd className="hidden sm:inline-block font-sans text-xs uppercase border border-border bg-background px-1.5 py-0.5 rounded-xs text-accent-5">
+              <kbd className="hidden sm:inline-block font-sans text-sm uppercase border border-border bg-background px-1.5 py-0.5 rounded-xs text-accent-5">
                 ⌘K
               </kbd>
             </button>
 
             <div className="flex items-center gap-3 border-l border-border pl-3">
               {user?.picture ? (
-                <div className="h-7 w-7 overflow-hidden rounded-full border border-border bg-accent-1">
+                <div className="h-8 w-8 overflow-hidden rounded-full border border-border bg-accent-1">
                   <img
                     src={user.picture}
                     alt={userName}
@@ -219,16 +230,16 @@ export default function ProtectedAppShell() {
                   />
                 </div>
               ) : (
-                <div className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-accent-2 font-sans text-xs font-semibold text-foreground">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-accent-2 font-sans text-sm font-semibold text-foreground">
                   {userInitial}
                 </div>
               )}
 
               <div className="hidden sm:flex flex-col">
-                <span className="text-xs font-medium text-foreground leading-tight font-sans">
+                <span className="text-sm font-medium text-foreground leading-tight font-sans">
                   {userName}
                 </span>
-                <span className="font-sans text-xs uppercase text-accent-5">
+                <span className="font-sans text-sm uppercase text-accent-5">
                   {user?.role === "admin" ? "ADMIN" : "TEST USER"}
                 </span>
               </div>
@@ -236,13 +247,13 @@ export default function ProtectedAppShell() {
 
             <Button
               variant="secondary"
-              size="xs"
+              size="sm"
               onClick={() => {
                 void logout();
               }}
-              className="gap-1.5 font-sans text-xs"
+              className="gap-1.5 font-sans text-sm"
             >
-              <LogOut className="h-3.5 w-3.5" />
+              <LogOut className="h-4 w-4" />
               <span className="hidden sm:inline">Logout</span>
             </Button>
           </div>
@@ -255,7 +266,7 @@ export default function ProtectedAppShell() {
         <aside className="hidden lg:flex w-60 shrink-0 flex-col justify-between border-r border-border bg-background p-4 sticky top-14 h-[calc(100vh-3.5rem)]">
           <div className="space-y-6">
             <div className="px-2">
-              <p className="font-sans text-xs uppercase font-semibold text-accent-4 tracking-wider">
+              <p className="font-sans text-sm uppercase font-semibold text-accent-4 tracking-wider">
                 Platform Navigation
               </p>
             </div>
@@ -291,7 +302,7 @@ export default function ProtectedAppShell() {
         {mobileMenuOpen && (
           <div className="lg:hidden fixed inset-0 z-40 bg-background flex flex-col p-6 space-y-4 pt-20 border-b border-border">
             <div className="px-2">
-              <p className="font-sans text-xs uppercase font-semibold text-accent-5">Navigation</p>
+              <p className="font-sans text-sm uppercase font-semibold text-accent-5">Navigation</p>
             </div>
             <nav className="space-y-2">
               {tabs.map((tab) => {

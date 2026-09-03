@@ -554,7 +554,13 @@ export const FormResponses = () => {
         onOpenShare={() => setIsShareModalOpen(true)}
         onRefresh={() => void fetchData(false)}
         isRefreshing={refreshing}
-        onBack={() => navigate(`/dashboard${scopeSearch}`)}
+        onBack={() => {
+          if (window.history.length > 1) {
+            navigate(-1);
+          } else {
+            navigate(`/dashboard${scopeSearch}`);
+          }
+        }}
         collaboratorCount={form.collaborators?.length || 0}
         saveStatus={saveStatus}
         currentUserAccess={form.currentUserAccess}
