@@ -8,6 +8,7 @@ export {
   sendMailWithTemplate,
   getMailStatus,
   getSenderEmail,
+  getAppBaseUrl,
   getSmtpTransporter,
   getMailtrapClient,
   renderEmailHtml,

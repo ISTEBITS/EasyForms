@@ -26,6 +26,23 @@ export function getSenderEmail() {
   );
 }
 
+export function getAppBaseUrl() {
+  const envUrl =
+    process.env.CLIENT_URL ||
+    process.env.APP_URL ||
+    process.env.FRONTEND_URL ||
+    process.env.ORIGIN;
+
+  if (envUrl) {
+    const primary = envUrl.split(",")[0].trim();
+    return primary.replace(/\/+$/, "");
+  }
+
+  return process.env.NODE_ENV === "production"
+    ? "https://easyforms.istebits.com"
+    : "http://localhost:5173";
+}
+
 export function getSmtpTransporter() {
   if (smtpTransporter) return smtpTransporter;
 
@@ -249,7 +266,7 @@ export async function sendCollaboratorInviteEmail({
   inviterName,
   inviterEmail,
 }) {
-  const appBaseUrl = process.env.CLIENT_URL || process.env.APP_URL || "http://localhost:5173";
+  const appBaseUrl = getAppBaseUrl();
   const accessUrl = `${appBaseUrl}/form/${formId}/responses`;
   const safeTitle = formTitle || "Untitled Form";
   const safeInviter = inviterName || inviterEmail || "A team member";
@@ -326,6 +343,7 @@ export function getMailStatus() {
 
 export async function seedDefaultTemplates() {
   try {
+    const baseUrl = getAppBaseUrl();
     const defaultTemplates = [
       {
         name: "Collaborator Invitation",
@@ -356,7 +374,7 @@ export async function seedDefaultTemplates() {
           { key: "role", description: "Collaborator role (viewer, editor, admin)", sample: "editor" },
           { key: "inviterName", description: "Name of the inviter", sample: "Alex Doe" },
           { key: "inviterEmail", description: "Email of the inviter", sample: "alex@example.com" },
-          { key: "accessUrl", description: "Link directly to response sheet", sample: "http://localhost:5173/form/123/responses" },
+          { key: "accessUrl", description: "Link directly to response sheet", sample: `${baseUrl}/form/123/responses` },
         ],
         isDefault: true,
         isActive: true,
