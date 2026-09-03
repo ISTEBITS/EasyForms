@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   DndContext,
   closestCenter,
@@ -29,6 +30,7 @@ import {
   Palette,
   Layers,
   LayoutGrid,
+  Table,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -447,24 +449,46 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
     }
     : undefined;
 
+  const navigate = useNavigate();
+  const location = useLocation();
+
   return (
     <div className="flex h-[calc(100vh-4rem)] w-full flex-col overflow-hidden bg-background text-foreground font-sans pb-14 lg:pb-0 relative">
       {/* Responsive Top Navbar Header */}
-      <header className="sticky top-0 z-30 shrink-0 border-b border-border bg-background/80 backdrop-blur-md px-2">
+      <header className="sticky top-0 z-30 shrink-0 border-b border-border bg-background/80 backdrop-blur-md px-2 sm:px-4">
         <div className="flex h-14 items-center justify-between gap-2 sm:gap-4">
-          {/* Left Side: Back Button & Form Title */}
+          {/* Left Side: Back Button, Form Title & Segmented Switcher */}
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             <Button
               variant="ghost"
               size="icon"
               onClick={onBack}
-              className="h-8 w-8 text-accent-5 hover:bg-accent-1 hover:text-foreground flex-shrink-0 bg-accent-2"
-              title="Back to Forms"
+              className="h-8 w-8 text-accent-5 hover:bg-accent-1 hover:text-foreground flex-shrink-0 bg-accent-2 cursor-pointer"
+              title="Back"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
 
             <div className="h-4 w-px bg-border flex-shrink-0 hidden sm:block" />
+
+            {/* Segmented Form Navigation Pill [Builder | Responses] */}
+            <div className="flex items-center rounded-sm bg-accent-1 border border-border p-0.5 shrink-0">
+              <button
+                type="button"
+                className="px-3 py-1 rounded-xs text-sm font-medium bg-background text-foreground shadow-xs flex items-center gap-1.5 transition-all"
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Builder</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate(`/form/${form.id || form._id}/responses${location.search || ""}`)}
+                className="px-3 py-1 rounded-xs text-sm font-medium text-accent-5 hover:text-foreground hover:bg-accent-2/50 flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Table className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Responses</span>
+              </button>
+            </div>
 
             <div className="flex items-center gap-2 min-w-0 flex-1">
               <Input
@@ -473,19 +497,19 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
                 onChange={(e) =>
                   updateFormState((prev) => ({ ...prev, title: e.target.value }))
                 }
-                className="h-8 border-0 border-b border-transparent bg-transparent px-1 font-semibold text-xs sm:text-base text-foreground hover:border-border focus:border-accent-8 focus:ring-0 placeholder:text-accent-4 max-w-sm truncate disabled:opacity-80"
+                className="h-8 border-0 border-b border-transparent bg-transparent px-1 font-semibold text-sm sm:text-base text-foreground hover:border-border focus:border-accent-8 focus:ring-0 placeholder:text-accent-4 max-w-xs sm:max-w-sm truncate disabled:opacity-80"
                 placeholder="Untitled Form"
               />
 
               {/* View Only Badge for Viewers */}
               {isViewer ? (
-                <span className="inline-flex items-center gap-1 rounded-sm border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-500 font-sans shrink-0">
-                  <Eye className="h-3 w-3" />
+                <span className="inline-flex items-center gap-1 rounded-sm border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-sm font-medium text-amber-500 font-sans shrink-0">
+                  <Eye className="h-3.5 w-3.5" />
                   <span>View only</span>
                 </span>
               ) : (
                 /* Status Indicator */
-                <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent-1/60 border border-border text-xs font-mono text-accent-5 flex-shrink-0">
+                <div className="hidden md:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent-1/60 border border-border text-sm font-sans text-accent-5 flex-shrink-0">
                   <div
                     className={`h-2 w-2 rounded-full ${isSaving
                         ? "bg-accent-4 animate-pulse"
@@ -503,14 +527,14 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
           </div>
 
           {/* Right Side: Actions Bar */}
-          <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
             {/* Publish Toggle */}
             <div className="flex items-center gap-1.5 rounded-xs border border-border bg-accent-1/50 px-2 py-1">
               <div
-                className={`h-2 w-2 rounded-full ${form.isPublished ? "bg-green-900" : "bg-red-900"
+                className={`h-2 w-2 rounded-full ${form.isPublished ? "bg-emerald-500" : "bg-red-500"
                   }`}
               />
-              <span className="hidden sm:inline text-xs font-medium text-accent-6">
+              <span className="hidden sm:inline text-sm font-medium text-accent-6">
                 {form.isPublished ? "Published" : "Draft"}
               </span>
               <Switch
@@ -528,7 +552,7 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
               variant={showRightDesign ? "secondary" : "ghost"}
               size="sm"
               onClick={() => setShowRightDesign(!showRightDesign)}
-              className="h-8 rounded-xs text-xs font-medium px-2.5 hidden lg:flex"
+              className="h-8 rounded-xs text-sm font-medium px-2.5 hidden lg:flex"
               title="Toggle Live Design Panel"
             >
               <Palette className="h-3.5 w-3.5 sm:mr-1 text-geist-success" />
@@ -540,7 +564,7 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
               variant="secondary"
               size="sm"
               onClick={() => setShowShareDialog(true)}
-              className="h-8 rounded-xs text-xs font-medium px-2.5 sm:px-3"
+              className="h-8 rounded-xs text-sm font-medium px-2.5 sm:px-3"
             >
               <Share2 className="h-3.5 w-3.5 sm:mr-1.5" />
               <span className="hidden sm:inline">Share</span>
@@ -551,7 +575,7 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
               <button
                 type="button"
                 onClick={() => setPreviewMode(false)}
-                className={`px-2.5 py-1 rounded-xs text-xs font-medium transition-geist duration-150 flex items-center gap-1.5 ${!previewMode
+                className={`px-2.5 py-1 rounded-xs text-sm font-medium transition-geist duration-150 flex items-center gap-1.5 ${!previewMode
                     ? "bg-accent-2 text-foreground shadow-xs"
                     : "text-accent-5 hover:text-foreground"
                   }`}
@@ -562,7 +586,7 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
               <button
                 type="button"
                 onClick={() => setPreviewMode(true)}
-                className={`px-2.5 py-1 rounded-xs text-xs font-medium transition-geist duration-150 flex items-center gap-1.5 ${previewMode
+                className={`px-2.5 py-1 rounded-xs text-sm font-medium transition-geist duration-150 flex items-center gap-1.5 ${previewMode
                     ? "bg-accent-2 text-foreground shadow-xs"
                     : "text-accent-5 hover:text-foreground"
                   }`}
@@ -579,7 +603,7 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
                 size="sm"
                 disabled={isSaving}
                 variant="default"
-                className="h-8 rounded-xs font-medium text-xs px-2.5 sm:px-4"
+                className="h-8 rounded-xs font-medium text-sm px-2.5 sm:px-4"
               >
                 {isSaving ? (
                   <>

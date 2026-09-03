@@ -72,7 +72,7 @@ function FormCollectionLayout({
 
       {/* Grid of Forms */}
       {filtered.length === 0 ? (
-        <div className="rounded-xs border border-zinc-800 bg-zinc-950/80 p-16 text-center text-sm text-zinc-400">
+        <div className="rounded-xs border border-border bg-background p-16 text-center text-sm text-accent-5">
           No matching forms found.
         </div>
       ) : (
@@ -80,18 +80,17 @@ function FormCollectionLayout({
           {filtered.map((form) => (
             <div
               key={form.id || form._id}
-              onClick={() => onOpen(form)}
-              className="group cursor-pointer rounded-xs border border-zinc-800/80 bg-black p-5 transition-all duration-200 hover:border-zinc-600 hover:bg-zinc-900/40 flex flex-col justify-between"
+              className="group rounded-xs border border-border bg-background p-5 transition-all duration-200 hover:border-accent-7 flex flex-col justify-between space-y-4"
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xs border border-zinc-800 bg-zinc-900 text-white group-hover:border-zinc-700">
-                    <FileText className="h-4.5 w-4.5 text-zinc-300" />
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xs border border-border bg-accent-1 text-foreground">
+                    <FileText className="h-4.5 w-4.5 text-foreground" />
                   </div>
                   <span
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-semibold border ${form.isPublished
+                    className={`rounded-full px-2.5 py-0.5 text-sm font-semibold border ${form.isPublished
                         ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                        : "border-zinc-800 bg-zinc-900 text-zinc-400"
+                        : "border-border bg-accent-1 text-accent-6"
                       }`}
                   >
                     {form.isPublished ? "Published" : "Draft"}
@@ -99,25 +98,31 @@ function FormCollectionLayout({
                 </div>
 
                 <div>
-                  <h3 className="text-base font-bold text-white group-hover:text-purple-300 transition-colors">
-                    {form.title}
+                  <h3
+                    onClick={() => onOpen(form)}
+                    className="text-base font-bold text-foreground hover:text-white transition-colors cursor-pointer truncate"
+                  >
+                    {form.title || "Untitled Form"}
                   </h3>
-                  <p className="mt-1 line-clamp-2 text-xs text-zinc-400 leading-relaxed">
+                  <p className="mt-1 line-clamp-2 text-sm text-accent-5 leading-relaxed">
                     {stripMarkdown(form.description || "") || "No description provided."}
                   </p>
                 </div>
               </div>
 
-              <div className="mt-6 flex items-center justify-between pt-3 border-t border-zinc-800/80 text-xs text-zinc-400">
-                <span className="flex items-center gap-1.5 font-medium text-zinc-300 text-xs">
-                  <BarChart2 className="h-4 w-4 text-zinc-400" />
-                  {form.responseCount || 0} responses
+              <div className="pt-3 border-t border-border flex flex-wrap items-center justify-between gap-2">
+                <span className="flex items-center gap-1.5 font-medium text-accent-5 text-sm">
+                  <BarChart2 className="h-4 w-4 text-accent-4" />
+                  <span>{form.responseCount || 0} responses</span>
                 </span>
 
-                <span className="flex items-center gap-1 text-xs font-semibold text-white group-hover:translate-x-0.5 transition-transform">
-                  Open {isEditor ? "Editor" : "Analytics"}
+                <button
+                  onClick={() => onOpen(form)}
+                  className="flex items-center gap-1.5 text-sm font-semibold text-foreground hover:text-white transition-colors cursor-pointer"
+                >
+                  <span>Open {isEditor ? "Editor" : "Responses"}</span>
                   <ArrowRight className="h-4 w-4" />
-                </span>
+                </button>
               </div>
             </div>
           ))}

@@ -11,6 +11,7 @@ import ProtectedAppShell from "./ProtectedAppShell";
 import { EditorFormsPage, ResponsesFormsPage } from "@/pages/FormCollections";
 import { ApiKeysPage } from "@/pages/ApiKeysPage";
 import { ActivityPage } from "@/pages/ActivityPage";
+import { MailTemplatesPage } from "@/pages/MailTemplatesPage";
 
 export default function AppRoutes() {
   const location = useLocation();
@@ -46,7 +47,15 @@ export default function AppRoutes() {
           <Route
             path="/editor/:formId"
             element={
-              <EditorWrapper onBack={() => navigate(`/editor${location.search || ""}`)} />
+              <EditorWrapper
+                onBack={() => {
+                  if (window.history.length > 1) {
+                    navigate(-1);
+                  } else {
+                    navigate(`/dashboard${location.search || ""}`);
+                  }
+                }}
+              />
             }
           />
 
@@ -55,6 +64,8 @@ export default function AppRoutes() {
           <Route path="/form/:id/responses" element={<FormResponses />} />
 
           <Route path="/api-keys" element={<ApiKeysPage />} />
+
+          <Route path="/mail" element={<MailTemplatesPage />} />
 
           <Route path="/activity" element={<ActivityPage />} />
         </Route>
