@@ -9,6 +9,7 @@ import type {
   Answer,
   ResponseStatus,
   CollaboratorRole,
+  GoogleSheetIntegration,
 } from "@/types/form";
 import { useAuth } from "@/context/auth";
 import {
@@ -28,6 +29,9 @@ import {
   ResponsesShareModal,
   ManualResponseModal,
   ImportResponsesModal,
+  GoogleSheetSyncModal,
+  DEFAULT_STATUS_OPTIONS,
+  type StatusOption,
 } from "@/components/form-responses";
 
 export const FormResponses = () => {
@@ -47,6 +51,17 @@ export const FormResponses = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Status options (persisted and shared across header & grid)
+  const [statusOptions, setStatusOptions] = useState<StatusOption[]>(() => {
+    try {
+      const saved = localStorage.getItem("easyforms_custom_statuses");
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // fallback
+    }
+    return DEFAULT_STATUS_OPTIONS;
+  });
 
   // View Mode: Sheet or Analytics
   const [viewMode, setViewMode] = useState<ViewMode>("sheet");
@@ -120,6 +135,8 @@ export const FormResponses = () => {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isGoogleSheetModalOpen, setIsGoogleSheetModalOpen] = useState(false);
+  const [isSyncingGoogleSheet, setIsSyncingGoogleSheet] = useState(false);
 
   const fetchData = useCallback(
     async (showGlobalLoader = false) => {
@@ -458,6 +475,64 @@ export const FormResponses = () => {
     toast.success("Sharing settings updated");
   };
 
+  // Google Sheets Sync Handlers
+  const handleSyncGoogleSheet = async () => {
+    if (!form) return;
+    try {
+      setIsSyncingGoogleSheet(true);
+      const result = await formsApi.syncGoogleSheet(form.id || form._id!);
+      setForm((prev) =>
+        prev
+          ? {
+              ...prev,
+              settings: {
+                ...prev.settings,
+                googleSheet: {
+                  ...(prev.settings.googleSheet || {
+                    connected: true,
+                    sheetUrl: result.sheetUrl || "",
+                    sheetId: result.sheetId || "",
+                    sheetName: "Responses",
+                    syncMode: "manual",
+                    autoSync: false,
+                  }),
+                  lastSyncedAt: result.lastSyncedAt,
+                },
+              },
+            }
+          : null
+      );
+      toast.success(`Successfully synced ${result.syncedCount} responses to Google Sheet`);
+    } catch (err: unknown) {
+      const message = err instanceof ApiError ? err.message : "Failed to sync to Google Sheet";
+      toast.error(message);
+    } finally {
+      setIsSyncingGoogleSheet(false);
+    }
+  };
+
+  const handleSaveGoogleSheetConfig = async (config: Partial<GoogleSheetIntegration>) => {
+    if (!form) return;
+    try {
+      const updated = await formsApi.updateGoogleSheetConfig(form.id || form._id!, config);
+      setForm((prev) =>
+        prev
+          ? {
+              ...prev,
+              settings: {
+                ...prev.settings,
+                googleSheet: updated,
+              },
+            }
+          : null
+      );
+    } catch (err: unknown) {
+      const message = err instanceof ApiError ? err.message : "Failed to update Google Sheet settings";
+      toast.error(message);
+      throw err;
+    }
+  };
+
   // Export
   const handleExport = (format: "csv" | "json") => {
     if (!form || responses.length === 0) return;
@@ -519,15 +594,15 @@ export const FormResponses = () => {
 
   if (error || !form) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center p-4">
+      <div className="flex min-h-[60vh] items-center justify-center p-4 font-sans">
         <div className="w-full max-w-md rounded-md border border-border bg-background p-6 text-center shadow-xs">
           <h2 className="text-base font-semibold text-foreground font-sans">
             Failed to Load Responses
           </h2>
-          <p className="mt-2 text-xs text-accent-5">{error || "Form not found"}</p>
+          <p className="mt-2 text-sm text-accent-5">{error || "Form not found"}</p>
           <button
             onClick={() => navigate(`/dashboard${scopeSearch}`)}
-            className="mt-4 rounded-sm border border-border bg-accent-1 px-4 py-2 text-xs font-medium text-foreground transition-all hover:bg-accent-2 cursor-pointer font-sans"
+            className="mt-4 rounded-sm border border-border bg-accent-1 px-4 py-2 text-sm font-medium text-foreground transition-all hover:bg-accent-2 cursor-pointer font-sans"
           >
             Return to Dashboard
           </button>
@@ -537,7 +612,7 @@ export const FormResponses = () => {
   }
 
   return (
-    <div className="min-h-[75vh] p-4 lg:p-6 space-y-4">
+    <div className="min-h-[75vh] px-4 lg:px-6 pb-6 pt-1 space-y-4">
       {/* Header Toolbar */}
       <ResponsesHeader
         form={form}
@@ -548,6 +623,7 @@ export const FormResponses = () => {
         onSearchChange={setSearchQuery}
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
+        statusOptions={statusOptions}
         onAddRow={() => setIsManualModalOpen(true)}
         onImport={() => setIsImportModalOpen(true)}
         onExport={handleExport}
@@ -568,6 +644,10 @@ export const FormResponses = () => {
         currentClientId={clientId}
         currentUserEmail={user?.email}
         currentUserId={user?.sub}
+        onOpenGoogleSheetModal={() => setIsGoogleSheetModalOpen(true)}
+        onSyncGoogleSheet={handleSyncGoogleSheet}
+        isSyncingGoogleSheet={isSyncingGoogleSheet}
+        googleSheetConfig={form.settings?.googleSheet}
       />
 
       {/* Main View Area */}
@@ -576,6 +656,7 @@ export const FormResponses = () => {
           <ResponsesSheetGrid
             responses={processedResponses}
             questions={questions}
+            formTitle={form?.title || "Form Submission"}
             selectedRowIds={selectedRowIds}
             onSelectRow={handleSelectRow}
             onSelectAll={handleSelectAll}
@@ -593,6 +674,8 @@ export const FormResponses = () => {
             canEdit={form.currentUserAccess ? form.currentUserAccess.canEdit : true}
             remoteCursors={remoteCursors}
             onActiveCellChange={updatePresence}
+            statusOptions={statusOptions}
+            onStatusOptionsChange={setStatusOptions}
           />
         ) : (
           <ResponsesSummaryAnalytics
@@ -606,6 +689,7 @@ export const FormResponses = () => {
       <ResponseDetailDrawer
         response={selectedDetailResponse}
         questions={questions}
+        formTitle={form?.title || "Form Submission"}
         onClose={() => setSelectedDetailResponse(null)}
         onUpdateAnswer={handleUpdateCell}
         onUpdateStatus={handleUpdateStatus}
@@ -621,6 +705,16 @@ export const FormResponses = () => {
         onAddCollaborator={handleAddCollaborator}
         onRemoveCollaborator={handleRemoveCollaborator}
         onUpdateShareSettings={handleUpdateShareSettings}
+      />
+
+      {/* Google Sheets Sync & Connect Modal */}
+      <GoogleSheetSyncModal
+        isOpen={isGoogleSheetModalOpen}
+        onClose={() => setIsGoogleSheetModalOpen(false)}
+        form={form}
+        onSaveConfig={handleSaveGoogleSheetConfig}
+        onSyncNow={handleSyncGoogleSheet}
+        isSyncing={isSyncingGoogleSheet}
       />
 
       {/* Manual Row Entry Modal */}

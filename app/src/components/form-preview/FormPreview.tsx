@@ -60,8 +60,7 @@ export function FormPreview({
     answerableQuestions.length > 0
       ? (answeredCount / answerableQuestions.length) * 100
       : 0;
-  const bannerImageUrl =
-    form.settings.theme.bannerUrl || form.settings.theme.backgroundImageUrl;
+  const bannerImageUrl = form.settings.theme.bannerUrl || "";
   const bannerPositionX =
     typeof form.settings.theme.bannerPositionX === "number"
       ? form.settings.theme.bannerPositionX

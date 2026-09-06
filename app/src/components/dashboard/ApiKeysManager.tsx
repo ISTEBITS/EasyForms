@@ -442,7 +442,7 @@ export function ApiKeysManager() {
 
       {/* Create Key Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={handleCloseCreate}>
-        <DialogContent className="ring-1 ring-gray-500 rounded-xs bg-black text-foreground sm:max-w-md">
+        <DialogContent className="ring-1 ring-border rounded-xs bg-background text-foreground sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
               {createdKey ? "API Key Created" : "Create API Key"}

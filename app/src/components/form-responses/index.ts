@@ -6,3 +6,4 @@ export * from "./ResponsesShareModal";
 export * from "./ManualResponseModal";
 export * from "./ImportResponsesModal";
 export * from "./StatusManagerModal";
+export * from "./GoogleSheetSyncModal";

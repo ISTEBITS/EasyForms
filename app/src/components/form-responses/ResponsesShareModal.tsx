@@ -155,7 +155,7 @@ export const ResponsesShareModal: React.FC<ResponsesShareModalProps> = ({
             />
             <label
               htmlFor="send-collab-invite-email"
-              className="text-xs text-accent-6 cursor-pointer select-none font-sans"
+              className="text-sm text-accent-6 cursor-pointer select-none font-sans"
             >
               Send email notification invite to collaborator
             </label>

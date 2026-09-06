@@ -9,9 +9,16 @@ import {
   MessageSquare,
   Settings,
   Check,
+  FileSpreadsheet,
+  FileCode,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { FormResponse, Question, ResponseStatus, Answer, CollaboratorPresence } from "@/types/form";
+import {
+  exportCandidateToPdf,
+  exportCandidateToExcel,
+  exportCandidateToDoc,
+} from "@/utils/candidateExport";
 import {
   StatusManagerModal,
   DEFAULT_STATUS_OPTIONS,
@@ -22,6 +29,7 @@ import {
 interface ResponsesSheetGridProps {
   responses: FormResponse[];
   questions: Question[];
+  formTitle?: string;
   selectedRowIds: string[];
   onSelectRow: (id: string, selected: boolean) => void;
   onSelectAll: (selected: boolean) => void;
@@ -43,11 +51,14 @@ interface ResponsesSheetGridProps {
   canEdit?: boolean;
   remoteCursors?: Record<string, CollaboratorPresence>;
   onActiveCellChange?: (cell: { rowKey: string; rowIndex: number; colIndex: number; questionId?: string } | null) => void;
+  statusOptions?: StatusOption[];
+  onStatusOptionsChange?: (options: StatusOption[]) => void;
 }
 
 export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
   responses,
   questions,
+  formTitle = "Form Submission",
   selectedRowIds,
   onSelectRow,
   onSelectAll,
@@ -64,9 +75,11 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
   canEdit = true,
   remoteCursors = {},
   onActiveCellChange,
+  statusOptions: statusOptionsProp,
+  onStatusOptionsChange,
 }) => {
   // Status Options with persistence
-  const [statusOptions, setStatusOptions] = useState<StatusOption[]>(() => {
+  const [localStatusOptions, setLocalStatusOptions] = useState<StatusOption[]>(() => {
     try {
       const saved = localStorage.getItem("easyforms_custom_statuses");
       if (saved) return JSON.parse(saved);
@@ -75,6 +88,8 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
     }
     return DEFAULT_STATUS_OPTIONS;
   });
+
+  const statusOptions = statusOptionsProp || localStatusOptions;
   const [isStatusManagerOpen, setIsStatusManagerOpen] = useState(false);
 
   // Cell inline editing state
@@ -133,15 +148,6 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
       window.removeEventListener("blur", handleWindowBlur);
     };
   }, [onActiveCellChange]);
-
-  const handleSaveStatusOptions = (newOptions: StatusOption[]) => {
-    setStatusOptions(newOptions);
-    try {
-      localStorage.setItem("easyforms_custom_statuses", JSON.stringify(newOptions));
-    } catch {
-      // ignore
-    }
-  };
 
   const getStatusInfo = useCallback(
     (stValue: string) => {
@@ -286,6 +292,16 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
     }
   };
 
+  const handleSaveStatusOptions = (newOptions: StatusOption[]) => {
+    setLocalStatusOptions(newOptions);
+    onStatusOptionsChange?.(newOptions);
+    try {
+      localStorage.setItem("easyforms_custom_statuses", JSON.stringify(newOptions));
+    } catch {
+      // ignore
+    }
+  };
+
   return (
     <div ref={gridContainerRef} className="relative space-y-2 font-sans">
       {/* Floating Bulk Actions Bar */}
@@ -317,7 +333,7 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
             </div>
 
             <Button
-              size="xs"
+              size="sm"
               variant="destructive"
               onClick={() => void onBulkDelete()}
               className="rounded-sm gap-1.5 h-7 text-sm cursor-pointer"
@@ -459,12 +475,12 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                           className="h-3.5 w-3.5 rounded-xs border-border text-foreground accent-foreground cursor-pointer"
                         />
                       ) : (
-                        <span className="text-accent-4/40 text-xs">—</span>
+                        <span className="text-accent-4/40 text-sm">—</span>
                       )}
                     </td>
 
                     {/* Row Index # */}
-                    <td className="px-2 py-1.5 text-center font-sans text-xs text-accent-4 border-r border-border/60 align-top">
+                    <td className="px-2 py-1.5 text-center font-sans text-sm text-accent-4 border-r border-border/60 align-top">
                       {rowIndex + 1}
                     </td>
 
@@ -477,7 +493,7 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                           onClick={() => {
                             if (canEdit) setStatusDropdownOpen(statusDropdownOpen === rowId ? null : rowId);
                           }}
-                          className={`inline-flex w-full items-center justify-between gap-1.5 rounded-sm border px-2 py-0.5 text-xs font-medium transition-all ${statusInfo.bg} ${canEdit ? "hover:opacity-85 cursor-pointer" : "cursor-default opacity-90"}`}
+                          className={`inline-flex w-full items-center justify-between gap-1.5 rounded-sm border px-2 py-0.5 text-sm font-medium transition-all ${statusInfo.bg} ${canEdit ? "hover:opacity-85 cursor-pointer" : "cursor-default opacity-90"}`}
                         >
                           <span className="truncate">{statusInfo.label}</span>
                           {canEdit && <ChevronDown className="h-3 w-3 opacity-60 shrink-0" />}
@@ -502,7 +518,7 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                                         void onUpdateStatus(rowId, stOpt.id as ResponseStatus);
                                         setStatusDropdownOpen(null);
                                       }}
-                                      className={`flex w-full items-center justify-between gap-2 rounded-xs px-2 py-1.5 text-xs text-left transition-colors hover:bg-accent-1 cursor-pointer ${isCurrent ? "font-semibold text-foreground bg-accent-1/60" : "text-accent-6"
+                                      className={`flex w-full items-center justify-between gap-2 rounded-xs px-2 py-1.5 text-sm text-left transition-colors hover:bg-accent-1 cursor-pointer ${isCurrent ? "font-semibold text-foreground bg-accent-1/60" : "text-accent-6"
                                         }`}
                                     >
                                       <div className="flex items-center gap-2 min-w-0">
@@ -522,7 +538,7 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                                     setStatusDropdownOpen(null);
                                     setIsStatusManagerOpen(true);
                                   }}
-                                  className="flex w-full items-center gap-1.5 rounded-xs px-2 py-1 text-xs text-accent-5 hover:text-foreground hover:bg-accent-1 text-left cursor-pointer"
+                                  className="flex w-full items-center gap-1.5 rounded-xs px-2 py-1 text-sm text-accent-5 hover:text-foreground hover:bg-accent-1 text-left cursor-pointer"
                                 >
                                   <Settings className="h-3 w-3" />
                                   <span>Manage / Add Statuses...</span>
@@ -599,7 +615,7 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                               {response.respondentEmail ? (
                                 <span className="break-words font-medium text-foreground">{response.respondentEmail}</span>
                               ) : (
-                                <span className="text-accent-4 italic font-sans text-xs">Anonymous</span>
+                                <span className="text-accent-4 italic font-sans text-sm">Anonymous</span>
                               )}
                               {hasNotes && (
                                 <span
@@ -725,7 +741,7 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                             className="fixed inset-0 z-30"
                             onClick={() => setActiveMenuRowId(null)}
                           />
-                          <div className="absolute right-2 top-full z-40 mt-1 min-w-[140px] rounded-sm border border-border bg-background p-1 shadow-lg">
+                          <div className="absolute right-2 top-full z-40 mt-1 min-w-[170px] rounded-sm border border-border bg-background p-1 shadow-lg space-y-0.5">
                             <button
                               onClick={() => {
                                 onOpenDetail(response);
@@ -734,18 +750,50 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                               className="flex w-full items-center gap-2 rounded-xs px-2.5 py-1.5 text-sm text-accent-6 hover:bg-accent-1 hover:text-foreground text-left cursor-pointer"
                             >
                               <Eye className="h-3.5 w-3.5" />
-                              <span>Inspect Row</span>
+                              <span>Inspect Details</span>
                             </button>
-                              <button
-                                onClick={() => {
-                                  void onDeleteRow(rowId);
-                                  setActiveMenuRowId(null);
-                                }}
-                                className="flex w-full items-center gap-2 rounded-xs px-2.5 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-500/10 text-left cursor-pointer"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                                <span>Delete Row</span>
-                              </button>
+                            <div className="h-px bg-border/60 my-1" />
+                            <button
+                              onClick={() => {
+                                exportCandidateToPdf(response, questions, formTitle);
+                                setActiveMenuRowId(null);
+                              }}
+                              className="flex w-full items-center gap-2 rounded-xs px-2.5 py-1.5 text-sm text-accent-6 hover:bg-accent-1 hover:text-foreground text-left cursor-pointer"
+                            >
+                              <FileText className="h-3.5 w-3.5 text-rose-500" />
+                              <span>Export PDF</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                exportCandidateToExcel(response, questions, formTitle);
+                                setActiveMenuRowId(null);
+                              }}
+                              className="flex w-full items-center gap-2 rounded-xs px-2.5 py-1.5 text-sm text-accent-6 hover:bg-accent-1 hover:text-foreground text-left cursor-pointer"
+                            >
+                              <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-500" />
+                              <span>Export Excel</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                exportCandidateToDoc(response, questions, formTitle);
+                                setActiveMenuRowId(null);
+                              }}
+                              className="flex w-full items-center gap-2 rounded-xs px-2.5 py-1.5 text-sm text-accent-6 hover:bg-accent-1 hover:text-foreground text-left cursor-pointer"
+                            >
+                              <FileCode className="h-3.5 w-3.5 text-blue-500" />
+                              <span>Export Word (.doc)</span>
+                            </button>
+                            <div className="h-px bg-border/60 my-1" />
+                            <button
+                              onClick={() => {
+                                void onDeleteRow(rowId);
+                                setActiveMenuRowId(null);
+                              }}
+                              className="flex w-full items-center gap-2 rounded-xs px-2.5 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-500/10 text-left cursor-pointer"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              <span>Delete Row</span>
+                            </button>
                           </div>
                         </>
                       )}
@@ -775,17 +823,17 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                     </td>
 
                     {/* Row Index # */}
-                    <td className="px-2 py-1 text-center font-sans text-xs text-accent-4/60 border-r border-border/40">
+                    <td className="px-2 py-1 text-center font-sans text-sm text-accent-4/60 border-r border-border/40">
                       {rowIndex + 1}
                     </td>
 
                     {/* Empty Status */}
-                    <td className="px-2 py-1 border-r border-border/40 text-accent-4/40 text-xs">
+                    <td className="px-2 py-1 border-r border-border/40 text-accent-4/40 text-sm">
                       —
                     </td>
 
                     {/* Empty Date */}
-                    <td className="px-3 py-1 border-r border-border/40 text-accent-4/40 text-xs">
+                    <td className="px-3 py-1 border-r border-border/40 text-accent-4/40 text-sm">
                       —
                     </td>
 
@@ -829,7 +877,7 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                           className="h-full min-h-[36px] w-full px-3 py-1.5 bg-background text-sm text-foreground outline-none font-sans resize-none rounded-none"
                         />
                       ) : (
-                        <span className="opacity-0 group-hover:opacity-60 transition-opacity text-xs">
+                        <span className="opacity-0 group-hover:opacity-60 transition-opacity text-sm">
                         </span>
                       )}
                     </td>
@@ -885,7 +933,7 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                               className="h-full min-h-[36px] w-full bg-background px-3 py-1.5 text-sm text-foreground outline-none font-sans resize-none rounded-none"
                             />
                           ) : (
-                            <span className="opacity-0 group-hover:opacity-40 transition-opacity text-xs">
+                            <span className="opacity-0 group-hover:opacity-40 transition-opacity text-sm">
                             </span>
                           )}
                         </td>
@@ -893,7 +941,7 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
                     })}
 
                     {/* Empty Action */}
-                    <td className="px-2 py-1 text-center text-accent-4/40 text-xs">
+                    <td className="px-2 py-1 text-center text-accent-4/40 text-sm">
                       —
                     </td>
                   </tr>

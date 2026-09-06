@@ -58,6 +58,7 @@ import { SdkPanel } from "../form-editor/SdkPanel";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { useForms } from "@/hooks/useForms";
 import { uploadFile } from "@/api";
+import { saveMediaAsset } from "@/utils/mediaLibrary";
 import { useAuth } from "@/context/auth";
 import type { Form, Question, QuestionType, FormTheme } from "@/types/form";
 import { DEFAULT_QUESTION } from "@/types/form";
@@ -123,7 +124,10 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [isQrGenerating, setIsQrGenerating] = useState(false);
-  const [isThemeAssetUploading, setIsThemeAssetUploading] = useState(false);
+  const [uploadingTarget, setUploadingTarget] = useState<
+    "logoUrl" | "bannerUrl" | "backgroundImageUrl" | null
+  >(null);
+  const isThemeAssetUploading = uploadingTarget !== null;
   const [devicePreview, setDevicePreview] = useState<"desktop" | "mobile">(
     "desktop",
   );
@@ -298,11 +302,18 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
   );
 
   const handleUploadThemeAsset = useCallback(
-    async (target: "logoUrl" | "bannerUrl", file: File) => {
-      if (isThemeAssetUploading) return;
-      setIsThemeAssetUploading(true);
+    async (target: "logoUrl" | "bannerUrl" | "backgroundImageUrl", file: File) => {
+      if (uploadingTarget) return;
+      setUploadingTarget(target);
       try {
         const uploaded = await uploadFile(file);
+        saveMediaAsset({
+          url: uploaded.url,
+          name: file.name,
+          type: target === "logoUrl" ? "logo" : target === "bannerUrl" ? "banner" : "background",
+          sizeBytes: file.size,
+        });
+
         updateFormState((prev) => ({
           ...prev,
           settings: {
@@ -312,7 +323,6 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
               [target]: uploaded.url,
               ...(target === "bannerUrl"
                 ? {
-                  backgroundImageUrl: uploaded.url,
                   bannerPositionX:
                     typeof prev.settings.theme.bannerPositionX === "number"
                       ? prev.settings.theme.bannerPositionX
@@ -329,15 +339,69 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
         toast.success(
           target === "logoUrl"
             ? "Logo uploaded successfully"
-            : "Banner uploaded successfully",
+            : target === "bannerUrl"
+              ? "Banner uploaded successfully"
+              : "Background image uploaded successfully",
         );
       } catch {
         toast.error("Failed to upload image");
       } finally {
-        setIsThemeAssetUploading(false);
+        setUploadingTarget(null);
       }
     },
-    [isThemeAssetUploading, isTestUser, updateFormState],
+    [uploadingTarget, updateFormState],
+  );
+
+  const handleRemoveThemeAsset = useCallback(
+    (target: "logoUrl" | "bannerUrl" | "backgroundImageUrl") => {
+      updateFormState((prev) => ({
+        ...prev,
+        settings: {
+          ...prev.settings,
+          theme: {
+            ...prev.settings.theme,
+            [target]: "",
+            ...(target === "bannerUrl" ? { bannerPositionX: 50, bannerPositionY: 50 } : {}),
+          },
+        },
+      }));
+      toast.success(
+        target === "logoUrl"
+          ? "Logo removed"
+          : target === "bannerUrl"
+            ? "Banner removed"
+            : "Background image removed",
+      );
+    },
+    [updateFormState],
+  );
+
+  const handleSelectThemeAsset = useCallback(
+    (target: "logoUrl" | "bannerUrl" | "backgroundImageUrl", url: string) => {
+      updateFormState((prev) => ({
+        ...prev,
+        settings: {
+          ...prev.settings,
+          theme: {
+            ...prev.settings.theme,
+            [target]: url,
+            ...(target === "bannerUrl"
+              ? {
+                bannerPositionX:
+                  typeof prev.settings.theme.bannerPositionX === "number"
+                    ? prev.settings.theme.bannerPositionX
+                    : 50,
+                bannerPositionY:
+                  typeof prev.settings.theme.bannerPositionY === "number"
+                    ? prev.settings.theme.bannerPositionY
+                    : 50,
+              }
+              : {}),
+          },
+        },
+      }));
+    },
+    [updateFormState],
   );
 
   const handleSave = useCallback(async () => {
@@ -715,7 +779,10 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
                   })
                 }
                 onUploadThemeAsset={handleUploadThemeAsset}
+                onRemoveThemeAsset={handleRemoveThemeAsset}
+                onSelectThemeAsset={handleSelectThemeAsset}
                 isThemeAssetUploading={isThemeAssetUploading}
+                uploadingTarget={uploadingTarget}
               />
             )}
 
@@ -860,7 +927,10 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
               theme={form.settings.theme}
               onUpdateTheme={handleUpdateTheme}
               onUploadThemeAsset={handleUploadThemeAsset}
+              onRemoveThemeAsset={handleRemoveThemeAsset}
+              onSelectThemeAsset={handleSelectThemeAsset}
               isUploading={isThemeAssetUploading}
+              uploadingTarget={uploadingTarget}
               isTestUser={isTestUser}
             />
           </div>
@@ -999,7 +1069,10 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
                   })
                 }
                 onUploadThemeAsset={handleUploadThemeAsset}
+                onRemoveThemeAsset={handleRemoveThemeAsset}
+                onSelectThemeAsset={handleSelectThemeAsset}
                 isThemeAssetUploading={isThemeAssetUploading}
+                uploadingTarget={uploadingTarget}
               />
             </div>
           </div>
@@ -1027,7 +1100,10 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
                 theme={form.settings.theme}
                 onUpdateTheme={handleUpdateTheme}
                 onUploadThemeAsset={handleUploadThemeAsset}
+                onRemoveThemeAsset={handleRemoveThemeAsset}
+                onSelectThemeAsset={handleSelectThemeAsset}
                 isUploading={isThemeAssetUploading}
+                uploadingTarget={uploadingTarget}
                 isTestUser={isTestUser}
               />
             </div>

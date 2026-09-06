@@ -9,6 +9,7 @@ import {
   getMailStatus,
   sendSubmissionReceipt,
   sendCollaboratorInviteEmail,
+  sendMailWithTemplate,
 } from "../utils/mailer.js";
 import {
   isValidObjectId,
@@ -549,14 +550,35 @@ export async function handleSubmitAResponse(req, res) {
 
     if (shouldSendReceipt) {
       try {
-        const receiptResult = await sendSubmissionReceipt({
-          to: String(verifiedEmail).trim().toLowerCase(),
-          name: verifiedName || String(verifiedEmail).split("@")[0],
-          formTitle: form.title,
-          submittedAt: response.submittedAt,
-          subjectTemplate: emailSettings?.subject,
-          messageTemplate: emailSettings?.message,
-        });
+        const respondentName = verifiedName || String(verifiedEmail).split("@")[0];
+        let receiptResult;
+
+        if (emailSettings?.templateSlug && !emailSettings?.useCustomTemplate) {
+          // Use selected template from dedicated Mail Service
+          receiptResult = await sendMailWithTemplate({
+            templateSlug: emailSettings.templateSlug,
+            to: String(verifiedEmail).trim().toLowerCase(),
+            variables: {
+              name: respondentName,
+              email: String(verifiedEmail).trim().toLowerCase(),
+              formTitle: form.title,
+              submittedAt: new Date(response.submittedAt).toLocaleString("en-US", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              }),
+            },
+          });
+        } else {
+          receiptResult = await sendSubmissionReceipt({
+            to: String(verifiedEmail).trim().toLowerCase(),
+            name: respondentName,
+            formTitle: form.title,
+            submittedAt: response.submittedAt,
+            subjectTemplate: emailSettings?.subject,
+            messageTemplate: emailSettings?.message,
+          });
+        }
+
         if (!receiptResult?.sent) {
           console.warn(
             `Submission receipt skipped for form ${String(form._id)}: ${receiptResult?.reason || "unknown_reason"}`,
@@ -568,6 +590,43 @@ export async function handleSubmitAResponse(req, res) {
           mailError?.message || mailError,
         );
       }
+    }
+
+    // Automated Google Sheets sync if configured
+    const sheetConfig = form.settings?.googleSheet;
+    if (sheetConfig?.connected && (sheetConfig?.autoSync || sheetConfig?.syncMode === "automated") && sheetConfig?.webhookUrl) {
+      void (async () => {
+        try {
+          const questions = (form.questions || []).filter((q) => q.type !== "section_break");
+          const rowData = [
+            response._id.toString(),
+            response.status || "unreviewed",
+            response.submittedAt.toISOString(),
+            response.respondentEmail || "Anonymous",
+            ...questions.map((q) => {
+              const ans = response.answers.find((a) => a.questionId === q.id);
+              if (!ans) return "";
+              if (Array.isArray(ans.value)) return ans.value.join(", ");
+              return ans.value !== null && ans.value !== undefined ? String(ans.value) : "";
+            }),
+          ];
+
+          await fetch(sheetConfig.webhookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "append_row",
+              formId: form._id.toString(),
+              formTitle: form.title,
+              sheetName: sheetConfig.sheetName || "Responses",
+              row: rowData,
+              timestamp: new Date().toISOString(),
+            }),
+          });
+        } catch (sheetErr) {
+          console.error("[Google Sheet Auto-Sync Error]:", sheetErr.message);
+        }
+      })();
     }
 
     res.status(201).json(response);
@@ -1095,6 +1154,173 @@ export async function handleUpdatePresence(req, res) {
 
     updateCollaboratorPresence(formId, clientId, activeCell);
     res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
+// Update Google Sheet Configuration
+export async function handleUpdateGoogleSheetConfig(req, res) {
+  try {
+    const { id: formId } = req.params;
+    if (!isValidObjectId(formId)) {
+      return res.status(400).json({ message: "Invalid form id" });
+    }
+
+    const form = await Form.findById(formId);
+    if (!form) {
+      return res.status(404).json({ message: "Form not found" });
+    }
+
+    const access = getUserFormAccess(form, req);
+    if (!access || !access.canEdit) {
+      return res.status(403).json({ message: "Permission denied. Editor role required." });
+    }
+
+    const cleanBody = sanitize(req.body);
+    const existing = form.settings?.googleSheet || {};
+
+    let sheetId = cleanBody.sheetId || existing.sheetId || "";
+    if (cleanBody.sheetUrl && !sheetId) {
+      const match = cleanBody.sheetUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+      if (match) sheetId = match[1];
+    }
+
+    const updatedConfig = {
+      connected: cleanBody.connected !== undefined ? Boolean(cleanBody.connected) : existing.connected,
+      sheetUrl: cleanBody.sheetUrl !== undefined ? String(cleanBody.sheetUrl).trim() : existing.sheetUrl,
+      sheetId,
+      sheetName: cleanBody.sheetName || existing.sheetName || "Responses",
+      webhookUrl: cleanBody.webhookUrl !== undefined ? String(cleanBody.webhookUrl).trim() : existing.webhookUrl,
+      syncMode: cleanBody.syncMode || existing.syncMode || "manual",
+      autoSync: cleanBody.autoSync !== undefined ? Boolean(cleanBody.autoSync) : existing.autoSync,
+      lastSyncedAt: existing.lastSyncedAt || null,
+    };
+
+    if (!form.settings) form.settings = {};
+    form.settings.googleSheet = updatedConfig;
+    await form.save();
+
+    res.json(updatedConfig);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
+// Manually trigger Google Sheet Sync
+export async function handleSyncGoogleSheet(req, res) {
+  try {
+    const { id: formId } = req.params;
+    if (!isValidObjectId(formId)) {
+      return res.status(400).json({ message: "Invalid form id" });
+    }
+
+    const form = await Form.findById(formId);
+    if (!form) {
+      return res.status(404).json({ message: "Form not found" });
+    }
+
+    const access = getUserFormAccess(form, req);
+    if (!access || !access.canEdit) {
+      return res.status(403).json({ message: "Permission denied. Editor role required." });
+    }
+
+    const sheetConfig = form.settings?.googleSheet;
+    if (!sheetConfig || !sheetConfig.connected) {
+      return res.status(400).json({ message: "Google Sheet is not connected to this form." });
+    }
+
+    const responses = await Response.find({ formId }).sort({ submittedAt: 1 });
+    const questions = (form.questions || []).filter((q) => q.type !== "section_break");
+
+    const headers = [
+      "Response ID",
+      "Status",
+      "Submission Date",
+      "Respondent Email",
+      ...questions.map((q) => q.title),
+    ];
+
+    const rows = responses.map((r) => [
+      r._id.toString(),
+      r.status || "unreviewed",
+      r.submittedAt ? new Date(r.submittedAt).toLocaleString() : "",
+      r.respondentEmail || "Anonymous",
+      ...questions.map((q) => {
+        const ans = r.answers.find((a) => a.questionId === q.id);
+        if (!ans) return "";
+        if (Array.isArray(ans.value)) return ans.value.join(", ");
+        return ans.value !== null && ans.value !== undefined ? String(ans.value) : "";
+      }),
+    ]);
+
+    // Validate webhookUrl
+    if (!sheetConfig.webhookUrl) {
+      return res.status(400).json({
+        message: "Google Apps Script Webhook URL is required to sync to your spreadsheet. Please configure and paste the Webhook URL in Google Sheet settings.",
+      });
+    }
+
+    // Dispatch full synchronization payload to Google Apps Script Webhook
+    const payload = {
+      action: "sync_all",
+      formId: form._id.toString(),
+      formTitle: form.title,
+      sheetUrl: sheetConfig.sheetUrl,
+      sheetId: sheetConfig.sheetId,
+      sheetName: sheetConfig.sheetName || "Responses",
+      headers,
+      rows,
+      count: rows.length,
+      timestamp: new Date().toISOString(),
+    };
+
+    let webhookRes;
+    try {
+      webhookRes = await fetch(sheetConfig.webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        redirect: "follow",
+      });
+    } catch (networkErr) {
+      return res.status(502).json({
+        message: `Failed to reach Google Apps Script Webhook: ${networkErr.message}. Please check that the Webhook URL is correct and deployed.`,
+      });
+    }
+
+    if (!webhookRes.ok) {
+      const errorText = await webhookRes.text().catch(() => "");
+      return res.status(502).json({
+        message: `Google Apps Script returned status ${webhookRes.status}. Make sure the Web App deployment has 'Who has access' set to 'Anyone'. ${errorText.slice(0, 150)}`,
+      });
+    }
+
+    let webhookData = null;
+    try {
+      const responseText = await webhookRes.text();
+      webhookData = JSON.parse(responseText);
+    } catch {
+      // If response text is not JSON, status was 200 so proceed
+    }
+
+    if (webhookData && webhookData.status === "error") {
+      return res.status(400).json({
+        message: `Google Sheets Script error: ${webhookData.message || "Failed to update spreadsheet"}`,
+      });
+    }
+
+    const now = new Date();
+    form.settings.googleSheet.lastSyncedAt = now;
+    await form.save();
+
+    res.json({
+      success: true,
+      syncedCount: rows.length,
+      lastSyncedAt: now.toISOString(),
+      sheetUrl: sheetConfig.sheetUrl,
+      sheetId: sheetConfig.sheetId,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

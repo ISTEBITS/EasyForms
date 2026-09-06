@@ -198,6 +198,28 @@ export const formsApi = {
     });
     return transformResponse(response);
   },
+
+  syncGoogleSheet: async (
+    formId: string
+  ): Promise<{ success: boolean; syncedCount: number; lastSyncedAt: string; sheetUrl?: string; sheetId?: string }> => {
+    return apiRequest<{ success: boolean; syncedCount: number; lastSyncedAt: string; sheetUrl?: string; sheetId?: string }>(
+      `/forms/${formId}/google-sheet/sync`,
+      { method: "POST" }
+    );
+  },
+
+  updateGoogleSheetConfig: async (
+    formId: string,
+    config: Partial<Form["settings"]["googleSheet"]>
+  ): Promise<NonNullable<Form["settings"]["googleSheet"]>> => {
+    return apiRequest<NonNullable<Form["settings"]["googleSheet"]>>(
+      `/forms/${formId}/google-sheet/config`,
+      {
+        method: "PUT",
+        body: JSON.stringify(config),
+      }
+    );
+  },
 };
 
 export const getFormResponses = async (formId: string) => {
