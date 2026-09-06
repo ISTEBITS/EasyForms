@@ -11,7 +11,6 @@ import {
   Check,
   Code2,
   FileCode2,
-  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -657,7 +656,6 @@ export function MailTemplatesPage() {
               <div className="space-y-2 rounded-sm border border-border bg-accent-1/40 p-3">
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-semibold text-foreground flex items-center gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5 text-blue-400" />
                     <span>Dynamic Tokens</span>
                   </span>
                   <span className="text-accent-5">Click to insert token into HTML</span>

@@ -20,10 +20,18 @@ interface MobileActionBarProps {
   onSlugChange: (value: string) => void;
   onSlugBlur: () => void;
   onUploadThemeAsset: (
-    target: "logoUrl" | "bannerUrl",
+    target: "logoUrl" | "bannerUrl" | "backgroundImageUrl",
     file: File,
   ) => Promise<void>;
+  onRemoveThemeAsset?: (
+    target: "logoUrl" | "bannerUrl" | "backgroundImageUrl",
+  ) => void;
+  onSelectThemeAsset?: (
+    target: "logoUrl" | "bannerUrl" | "backgroundImageUrl",
+    url: string,
+  ) => void;
   isThemeAssetUploading: boolean;
+  uploadingTarget?: "logoUrl" | "bannerUrl" | "backgroundImageUrl" | null;
 }
 
 export const MobileActionBar = ({
@@ -34,7 +42,10 @@ export const MobileActionBar = ({
   onSlugChange,
   onSlugBlur,
   onUploadThemeAsset,
+  onRemoveThemeAsset,
+  onSelectThemeAsset,
   isThemeAssetUploading,
+  uploadingTarget = null,
 }: MobileActionBarProps) => {
   const [showMobileAdd, setShowMobileAdd] = useState(false);
   const [showMobileSettings, setShowMobileSettings] = useState(false);
@@ -103,7 +114,10 @@ export const MobileActionBar = ({
               onSlugChange={onSlugChange}
               onSlugBlur={onSlugBlur}
               onUploadThemeAsset={onUploadThemeAsset}
+              onRemoveThemeAsset={onRemoveThemeAsset}
+              onSelectThemeAsset={onSelectThemeAsset}
               isThemeAssetUploading={isThemeAssetUploading}
+              uploadingTarget={uploadingTarget}
             />
           </div>
         </SheetContent>

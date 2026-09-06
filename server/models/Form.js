@@ -95,6 +95,8 @@ const FormSettingsSchema = new mongoose.Schema({
   },
   emailNotification: {
     enabled: { type: Boolean, default: false },
+    templateSlug: { type: String, default: "submission-receipt" },
+    useCustomTemplate: { type: Boolean, default: false },
     subject: {
       type: String,
       default: "Your response to {{formTitle}} was received",
@@ -102,8 +104,18 @@ const FormSettingsSchema = new mongoose.Schema({
     message: {
       type: String,
       default:
-        'Hi {{email}},\n\nThank you for completing "{{formTitle}}". We have recorded your submission on {{submittedAt}}.',
+        'Hi {{name}},\n\nThank you for completing "{{formTitle}}". We have recorded your submission on {{submittedAt}}.',
     },
+  },
+  googleSheet: {
+    connected: { type: Boolean, default: false },
+    sheetUrl: { type: String, default: "" },
+    sheetId: { type: String, default: "" },
+    sheetName: { type: String, default: "Responses" },
+    webhookUrl: { type: String, default: "" },
+    syncMode: { type: String, enum: ["manual", "automated"], default: "manual" },
+    lastSyncedAt: { type: Date, default: null },
+    autoSync: { type: Boolean, default: false },
   },
   limitOneResponse: { 
     type: Boolean, 

@@ -125,15 +125,15 @@ export const ImportResponsesModal: React.FC<ImportResponsesModalProps> = ({
               <Upload className="h-4 w-4" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-foreground font-sans">
+              <h2 className="text-base font-semibold text-foreground font-sans">
                 Import CSV Responses
               </h2>
-              <p className="text-xs text-accent-5">Upload and map response records</p>
+              <p className="text-sm text-accent-5 font-sans">Upload and map response records</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-sm text-accent-5 hover:bg-accent-1 hover:text-foreground transition-colors"
+            className="flex h-7 w-7 items-center justify-center rounded-sm text-accent-5 hover:bg-accent-1 hover:text-foreground transition-colors cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
@@ -148,7 +148,7 @@ export const ImportResponsesModal: React.FC<ImportResponsesModalProps> = ({
             >
               <FileText className="h-8 w-8 text-accent-4 mx-auto mb-2" />
               <p className="text-sm font-medium text-foreground">Click to upload CSV file</p>
-              <p className="text-xs text-accent-5 mt-1">Accepts standard .csv formatted responses</p>
+              <p className="text-sm text-accent-5 mt-1 font-sans">Accepts standard .csv formatted responses</p>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -162,8 +162,8 @@ export const ImportResponsesModal: React.FC<ImportResponsesModalProps> = ({
               <div className="flex items-center justify-between rounded-sm border border-border bg-accent-1/40 p-2.5">
                 <div className="flex items-center gap-2 min-w-0">
                   <FileText className="h-4 w-4 text-accent-6 shrink-0" />
-                  <span className="text-xs font-medium text-foreground truncate">{file.name}</span>
-                  <span className="text-xs font-mono text-accent-5">({csvRows.length} rows)</span>
+                  <span className="text-sm font-medium text-foreground truncate font-sans">{file.name}</span>
+                  <span className="text-sm text-accent-5 font-sans">({csvRows.length} rows)</span>
                 </div>
                 <button
                   onClick={() => {
@@ -171,7 +171,7 @@ export const ImportResponsesModal: React.FC<ImportResponsesModalProps> = ({
                     setCsvHeaders([]);
                     setCsvRows([]);
                   }}
-                  className="text-xs text-accent-5 hover:text-foreground underline cursor-pointer"
+                  className="text-sm text-accent-5 hover:text-foreground underline cursor-pointer font-sans"
                 >
                   Change
                 </button>
@@ -179,17 +179,17 @@ export const ImportResponsesModal: React.FC<ImportResponsesModalProps> = ({
 
               {/* Column Mapping Header */}
               <div className="space-y-3">
-                <h3 className="text-xs font-mono uppercase tracking-wider text-accent-5 font-semibold">
+                <h3 className="text-sm font-sans uppercase tracking-wider text-accent-5 font-semibold">
                   Map CSV Columns to Form Fields
                 </h3>
 
                 {/* Email Column */}
-                <div className="flex items-center justify-between text-xs gap-3">
-                  <span className="text-foreground font-medium w-1/2 truncate">Respondent Email</span>
+                <div className="flex items-center justify-between text-sm gap-3">
+                  <span className="text-foreground font-medium w-1/2 truncate font-sans">Respondent Email</span>
                   <select
                     value={emailColumn}
                     onChange={(e) => setEmailColumn(e.target.value)}
-                    className="w-1/2 rounded-sm border border-border bg-background px-2.5 py-1 text-xs text-foreground focus:outline-none cursor-pointer"
+                    className="w-1/2 rounded-sm border border-border bg-background px-2.5 py-1 text-sm text-foreground focus:outline-none cursor-pointer font-sans"
                   >
                     <option value="">-- Ignore / Anonymous --</option>
                     {csvHeaders.map((h) => (
@@ -202,14 +202,14 @@ export const ImportResponsesModal: React.FC<ImportResponsesModalProps> = ({
 
                 {/* Question Mapping */}
                 {questions.map((q) => (
-                  <div key={q.id} className="flex items-center justify-between text-xs gap-3">
-                    <span className="text-foreground font-medium w-1/2 truncate">{q.title}</span>
+                  <div key={q.id} className="flex items-center justify-between text-sm gap-3">
+                    <span className="text-foreground font-medium w-1/2 truncate font-sans">{q.title}</span>
                     <select
                       value={columnMapping[q.id] || ""}
                       onChange={(e) =>
                         setColumnMapping((prev) => ({ ...prev, [q.id]: e.target.value }))
                       }
-                      className="w-1/2 rounded-sm border border-border bg-background px-2.5 py-1 text-xs text-foreground focus:outline-none cursor-pointer"
+                      className="w-1/2 rounded-sm border border-border bg-background px-2.5 py-1 text-sm text-foreground focus:outline-none cursor-pointer font-sans"
                     >
                       <option value="">-- Skip Question --</option>
                       {csvHeaders.map((h) => (
@@ -232,7 +232,7 @@ export const ImportResponsesModal: React.FC<ImportResponsesModalProps> = ({
             variant="outline"
             size="sm"
             onClick={onClose}
-            className="rounded-sm text-xs font-sans h-8"
+            className="rounded-sm text-sm font-sans h-8"
           >
             Cancel
           </Button>
@@ -240,7 +240,7 @@ export const ImportResponsesModal: React.FC<ImportResponsesModalProps> = ({
             size="sm"
             disabled={!file || csvRows.length === 0 || isImporting}
             onClick={handleExecuteImport}
-            className="rounded-sm text-xs font-sans h-8 bg-foreground text-background hover:bg-accent-7"
+            className="rounded-sm text-sm font-sans h-8 bg-foreground text-background hover:bg-accent-7"
           >
             {isImporting ? (
               <span className="inline-flex items-center gap-1.5">

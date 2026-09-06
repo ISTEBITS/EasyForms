@@ -223,7 +223,11 @@
   }
 
   .hide-scrollbar {
-    @apply scrollbar-hide;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 
   /* Typography Scale from DESIGN.md */

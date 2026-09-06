@@ -130,6 +130,17 @@ export interface Form {
   };
 }
 
+export interface GoogleSheetIntegration {
+  connected: boolean;
+  sheetUrl?: string;
+  sheetId?: string;
+  sheetName?: string;
+  webhookUrl?: string;
+  syncMode?: "manual" | "automated";
+  lastSyncedAt?: string | null;
+  autoSync?: boolean;
+}
+
 export interface FormSettings {
   allowMultipleResponses: boolean;
   requireLogin: boolean;
@@ -139,6 +150,7 @@ export interface FormSettings {
   maxResponses?: number | null;
   closedMessage?: string;
   emailNotification: FormEmailNotification;
+  googleSheet?: GoogleSheetIntegration;
   redirectUrl?: string;
   theme: FormTheme;
   limitOneResponse: boolean;
@@ -146,6 +158,8 @@ export interface FormSettings {
 
 export interface FormEmailNotification {
   enabled: boolean;
+  templateSlug?: string | null;
+  useCustomTemplate?: boolean;
   subject: string;
   message: string;
 }
@@ -258,9 +272,21 @@ export const DEFAULT_FORM: Form = {
     confirmationMessage: 'Thank you for your response!',
     emailNotification: {
       enabled: false,
+      templateSlug: "submission-receipt",
+      useCustomTemplate: false,
       subject: 'Your response to {{formTitle}} was received',
       message:
         'Hi {{name}},\n\nThank you for completing "{{formTitle}}". We have recorded your submission on {{submittedAt}}.',
+    },
+    googleSheet: {
+      connected: false,
+      sheetUrl: "",
+      sheetId: "",
+      sheetName: "Responses",
+      webhookUrl: "",
+      syncMode: "manual",
+      lastSyncedAt: null,
+      autoSync: false,
     },
     theme: {
       primaryColor: '#0070f3',

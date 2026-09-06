@@ -29,6 +29,8 @@ import {
   handleGetSharedResponses,
   handleCollaborationStream,
   handleUpdatePresence,
+  handleSyncGoogleSheet,
+  handleUpdateGoogleSheetConfig,
 } from "../controllers/form.controllers.js";
 
 const router = express.Router();
@@ -84,6 +86,10 @@ router.delete("/:id/responses/:responseId", checkCookies, handleDeleteSingleResp
 router.post("/:id/collaborators", checkCookies, handleAddCollaborator);
 router.delete("/:id/collaborators/:collaboratorId", checkCookies, handleRemoveCollaborator);
 router.patch("/:id/share-settings", checkCookies, handleUpdateShareSettings);
+
+// Google Sheets Integration (protected)
+router.post("/:id/google-sheet/sync", checkCookies, handleSyncGoogleSheet);
+router.put("/:id/google-sheet/config", checkCookies, handleUpdateGoogleSheetConfig);
 
 // Real-Time Collaboration (SSE stream & Presence heartbeats)
 router.get("/:id/collaboration-stream", checkCookies, handleCollaborationStream);

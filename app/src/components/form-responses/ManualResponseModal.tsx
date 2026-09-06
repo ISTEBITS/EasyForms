@@ -65,15 +65,15 @@ export const ManualResponseModal: React.FC<ManualResponseModalProps> = ({
               <Plus className="h-4 w-4" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-foreground font-sans">
+              <h2 className="text-base font-semibold text-foreground font-sans">
                 Insert New Response
               </h2>
-              <p className="text-xs text-accent-5">Manually record a submission row</p>
+              <p className="text-sm text-accent-5 font-sans">Manually record a submission row</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-sm text-accent-5 hover:bg-accent-1 hover:text-foreground transition-colors"
+            className="flex h-7 w-7 items-center justify-center rounded-sm text-accent-5 hover:bg-accent-1 hover:text-foreground transition-colors cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
@@ -81,9 +81,9 @@ export const ManualResponseModal: React.FC<ManualResponseModalProps> = ({
 
         {/* Scrollable Form */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto space-y-4 pr-1">
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-mono uppercase text-accent-5 mb-1 font-medium">
+              <label className="block text-sm font-sans uppercase text-accent-5 mb-1 font-medium">
                 Respondent Name
               </label>
               <input
@@ -91,12 +91,12 @@ export const ManualResponseModal: React.FC<ManualResponseModalProps> = ({
                 placeholder="Jane Doe"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-sm border border-border bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-accent-4 focus:outline-none focus:ring-1 focus:ring-foreground"
+                className="w-full rounded-sm border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-accent-4 focus:outline-none focus:ring-1 focus:ring-foreground font-sans"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-mono uppercase text-accent-5 mb-1 font-medium">
+              <label className="block text-sm font-sans uppercase text-accent-5 mb-1 font-medium">
                 Respondent Email
               </label>
               <input
@@ -104,18 +104,18 @@ export const ManualResponseModal: React.FC<ManualResponseModalProps> = ({
                 placeholder="user@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-sm border border-border bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-accent-4 focus:outline-none focus:ring-1 focus:ring-foreground"
+                className="w-full rounded-sm border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-accent-4 focus:outline-none focus:ring-1 focus:ring-foreground font-sans"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-mono uppercase text-accent-5 mb-1 font-medium">
+              <label className="block text-sm font-sans uppercase text-accent-5 mb-1 font-medium">
                 Status
               </label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as ResponseStatus)}
-                className="w-full rounded-sm border border-border bg-background px-2.5 py-1.5 text-xs font-medium text-foreground focus:outline-none cursor-pointer"
+                className="w-full rounded-sm border border-border bg-background px-2.5 py-1.5 text-sm font-medium text-foreground focus:outline-none cursor-pointer font-sans"
               >
                 <option value="unreviewed">Unreviewed</option>
                 <option value="reviewed">Reviewed</option>
@@ -126,13 +126,13 @@ export const ManualResponseModal: React.FC<ManualResponseModalProps> = ({
           </div>
 
           <div className="space-y-3 pt-2 border-t border-border">
-            <label className="block text-xs font-mono uppercase text-accent-5 font-medium">
+            <label className="block text-sm font-sans uppercase text-accent-5 font-medium">
               Question Fields
             </label>
 
             {questions.map((q) => (
               <div key={q.id} className="space-y-1">
-                <label className="block text-xs font-medium text-foreground font-sans">
+                <label className="block text-sm font-medium text-foreground font-sans">
                   {q.title} {q.required && <span className="text-red-500">*</span>}
                 </label>
 
@@ -141,7 +141,7 @@ export const ManualResponseModal: React.FC<ManualResponseModalProps> = ({
                     value={answers[q.id] || ""}
                     onChange={(e) => handleAnswerChange(q.id, e.target.value)}
                     required={q.required}
-                    className="w-full rounded-sm border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus:outline-none cursor-pointer"
+                    className="w-full rounded-sm border border-border bg-background px-2.5 py-1.5 text-sm text-foreground focus:outline-none cursor-pointer font-sans"
                   >
                     <option value="">Select an option</option>
                     {q.options?.map((opt) => (
@@ -157,7 +157,7 @@ export const ManualResponseModal: React.FC<ManualResponseModalProps> = ({
                     onChange={(e) => handleAnswerChange(q.id, e.target.value)}
                     placeholder={q.placeholder || "Enter value"}
                     required={q.required}
-                    className="w-full rounded-sm border border-border bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-accent-4 focus:outline-none focus:ring-1 focus:ring-foreground"
+                    className="w-full rounded-sm border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-accent-4 focus:outline-none focus:ring-1 focus:ring-foreground font-sans"
                   />
                 )}
               </div>
@@ -170,7 +170,7 @@ export const ManualResponseModal: React.FC<ManualResponseModalProps> = ({
               variant="outline"
               size="sm"
               onClick={onClose}
-              className="rounded-sm text-xs font-sans h-8"
+              className="rounded-sm text-sm font-sans h-8"
             >
               Cancel
             </Button>
@@ -178,7 +178,7 @@ export const ManualResponseModal: React.FC<ManualResponseModalProps> = ({
               type="submit"
               size="sm"
               disabled={isSubmitting}
-              className="rounded-sm text-xs font-sans h-8 bg-foreground text-background hover:bg-accent-7"
+              className="rounded-sm text-sm font-sans h-8 bg-foreground text-background hover:bg-accent-7"
             >
               {isSubmitting ? (
                 <span className="inline-flex items-center gap-1.5">

@@ -13,10 +13,33 @@ import {
   Check,
   Eye,
   LayoutGrid,
+  FileSpreadsheet,
+  ChevronDown,
+  ExternalLink,
+  Settings,
+  Filter,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import type { Form, ResponseStatus, UserFormAccess, CollaboratorPresence } from "@/types/form";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { Form, UserFormAccess, CollaboratorPresence, GoogleSheetIntegration } from "@/types/form";
+import {
+  DEFAULT_STATUS_OPTIONS,
+  STATUS_COLORS,
+  type StatusOption,
+} from "./StatusManagerModal";
 
 export type ViewMode = "sheet" | "analytics";
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -28,8 +51,9 @@ interface ResponsesHeaderProps {
   totalResponses: number;
   searchQuery: string;
   onSearchChange: (query: string) => void;
-  statusFilter: ResponseStatus | "all";
-  onStatusFilterChange: (status: ResponseStatus | "all") => void;
+  statusFilter: string;
+  onStatusFilterChange: (status: any) => void;
+  statusOptions?: StatusOption[];
   onAddRow: () => void;
   onImport: () => void;
   onExport: (format: "csv" | "json") => void;
@@ -44,17 +68,22 @@ interface ResponsesHeaderProps {
   currentClientId?: string;
   currentUserEmail?: string;
   currentUserId?: string;
+  onOpenGoogleSheetModal: () => void;
+  onSyncGoogleSheet: () => void;
+  isSyncingGoogleSheet: boolean;
+  googleSheetConfig?: GoogleSheetIntegration;
 }
 
 export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
   form,
   viewMode,
   onViewModeChange,
-  totalResponses,
+  totalResponses: _totalResponses,
   searchQuery,
   onSearchChange,
   statusFilter,
   onStatusFilterChange,
+  statusOptions = DEFAULT_STATUS_OPTIONS,
   onAddRow,
   onImport,
   onExport,
@@ -69,6 +98,10 @@ export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
   currentClientId,
   currentUserEmail,
   currentUserId,
+  onOpenGoogleSheetModal,
+  onSyncGoogleSheet,
+  isSyncingGoogleSheet,
+  googleSheetConfig,
 }) => {
   const navigate = useNavigate();
   const isViewer = currentUserAccess ? !currentUserAccess.canEdit : false;
@@ -92,7 +125,7 @@ export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
   }, [onlineCollaborators]);
 
   return (
-    <header className="space-y-3 pb-3 border-b border-border font-sans">
+    <header className="sticky top-14 z-30 -mx-4 lg:-mx-6 px-4 lg:px-6 py-3 bg-background border-b border-border font-sans space-y-3 shadow-2xs">
       {/* Top Breadcrumb & Actions Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
@@ -129,9 +162,7 @@ export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
             <h1 className="truncate text-sm sm:text-base font-semibold text-foreground font-sans tracking-tight max-w-xs sm:max-w-sm">
               {form.title || "Untitled Form"}
             </h1>
-            <span className="hidden sm:inline-flex items-center rounded-sm border border-border bg-accent-1 px-2.5 py-0.5 text-sm font-sans text-accent-6">
-              {totalResponses} {totalResponses === 1 ? "response" : "responses"}
-            </span>
+
 
             {/* View-Only Badge for Viewers */}
             {isViewer && (
@@ -256,14 +287,84 @@ export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
             </Button>
           )}
 
+          {/* Google Sheets Sync Integration (Connect or Sync) */}
+          {!isViewer && (
+            <div className="flex items-center gap-1">
+              {!googleSheetConfig?.connected ? (
+                /* Disconnected state: Sheet logo + "Google" */
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onOpenGoogleSheetModal}
+                  className="rounded-sm gap-1.5 font-sans h-8 text-sm hover:border-emerald-500/50 hover:bg-emerald-500/5"
+                  title="Connect Google Sheet"
+                >
+                  <FileSpreadsheet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                  <span>Google</span>
+                </Button>
+              ) : (
+                /* Connected state: transforms into "Sync" with spin loading */
+                <div className="flex items-center rounded-sm border border-border bg-background p-0.5">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onSyncGoogleSheet}
+                    disabled={isSyncingGoogleSheet}
+                    className="rounded-xs gap-1.5 font-sans h-7 text-sm px-2.5 hover:bg-accent-1"
+                    title={
+                      googleSheetConfig.lastSyncedAt
+                        ? `Last synced: ${new Date(googleSheetConfig.lastSyncedAt).toLocaleTimeString()}`
+                        : "Sync responses to Google Sheet"
+                    }
+                  >
+                    <RefreshCw
+                      className={`h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 ${
+                        isSyncingGoogleSheet ? "animate-spin" : ""
+                      }`}
+                    />
+                    <span>{isSyncingGoogleSheet ? "Syncing..." : "Sync"}</span>
+                  </Button>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <button
+                          type="button"
+                          className="flex h-7 w-5 items-center justify-center rounded-xs text-accent-5 hover:bg-accent-1 hover:text-foreground transition-colors cursor-pointer"
+                          title="Google Sheet Settings"
+                        >
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        </button>
+                      }
+                    />
+                    <DropdownMenuContent align="end" className="w-52">
+                      {googleSheetConfig.sheetUrl && (
+                        <DropdownMenuItem
+                          onClick={() => window.open(googleSheetConfig.sheetUrl, "_blank", "noopener,noreferrer")}
+                        >
+                          <ExternalLink className="mr-2 h-4 w-4 text-emerald-500" />
+                          <span>Open Google Sheet</span>
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem onClick={onOpenGoogleSheetModal}>
+                        <Settings className="mr-2 h-4 w-4 text-accent-6" />
+                        <span>Sheet & Sync Settings</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Export / Import (Import only for editors/owners) */}
           <div className="flex items-center gap-1">
             {!isViewer && (
               <Button
                 variant="outline"
-                size="xs"
+                size="sm"
                 onClick={onImport}
-                className="rounded-sm gap-1.5 font-sans h-8"
+                className="rounded-sm gap-1.5 font-sans h-8 text-sm"
                 title="Import CSV Responses"
               >
                 <Upload className="h-3.5 w-3.5 text-accent-5" />
@@ -273,8 +374,8 @@ export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
             <div className="relative group">
               <Button
                 variant="outline"
-                size="xs"
-                className="rounded-sm gap-1.5 font-sans h-8"
+                size="sm"
+                className="rounded-sm gap-1.5 font-sans h-8 text-sm"
                 onClick={() => onExport("csv")}
               >
                 <Download className="h-3.5 w-3.5 text-accent-5" />
@@ -286,9 +387,9 @@ export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
           {/* Add Row Manual Entry (Only for editors/owners) */}
           {!isViewer && (
             <Button
-              size="xs"
+              size="sm"
               onClick={onAddRow}
-              className="rounded-sm gap-1.5 bg-foreground text-background hover:bg-accent-7 font-sans h-8"
+              className="rounded-sm gap-1.5 bg-foreground text-background hover:bg-accent-7 font-sans h-8 text-sm"
             >
               <Plus className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Add Row</span>
@@ -323,20 +424,36 @@ export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
             />
           </div>
 
-          {/* Status Filter Tabs */}
-          <div className="flex items-center gap-1 overflow-x-auto pb-0.5 hide-scrollbar">
-            {(["all", "unreviewed", "reviewed", "approved", "flagged"] as const).map((status) => (
-              <button
-                key={status}
-                onClick={() => onStatusFilterChange(status)}
-                className={`rounded-sm px-2.5 py-1 text-sm font-medium capitalize transition-colors ${statusFilter === status
-                    ? "bg-foreground text-background"
-                    : "border border-border bg-background text-accent-5 hover:bg-accent-1 hover:text-foreground"
-                  }`}
-              >
-                {status}
-              </button>
-            ))}
+          {/* Dynamic Status Filter Dropdown */}
+          <div className="flex items-center gap-2">
+            <Select
+              value={statusFilter}
+              onValueChange={(val) => onStatusFilterChange(val || "all")}
+            >
+              <SelectTrigger className="h-8 min-w-[160px] text-sm font-sans bg-background border-border gap-2">
+                <Filter className="h-3.5 w-3.5 text-accent-5 shrink-0" />
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent className="bg-background text-sm font-sans border-border">
+                <SelectItem value="all" className="cursor-pointer text-sm font-sans">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-accent-4" />
+                    <span>All Statuses</span>
+                  </span>
+                </SelectItem>
+                {statusOptions.map((opt) => {
+                  const colorConfig = STATUS_COLORS[opt.colorKey] || STATUS_COLORS.gray;
+                  return (
+                    <SelectItem key={opt.id} value={opt.id} className="cursor-pointer text-sm font-sans">
+                      <span className="flex items-center gap-2">
+                        <span className={`h-2 w-2 rounded-full ${colorConfig.previewBg}`} />
+                        <span>{opt.label}</span>
+                      </span>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       )}

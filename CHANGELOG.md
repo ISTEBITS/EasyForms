@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 This project follows **Semantic Versioning (SemVer)**:  
 MAJOR.MINOR.PATCH (e.g., 2.5.0)
 
+## [2.6.0] - 2026-09-07
+
+### Added & Enhanced (App & Server)
+- **Canva-Style Media Asset Library & Asset Management**:
+  - Implemented persistent Media Asset Library modal (`MediaLibraryModal.tsx`) with category tabs (*All Assets*, *Logos*, *Banners*, *Backgrounds*, *Curated Presets*), instant search, local storage caching, and 1-click asset selection.
+  - Decoupled `bannerUrl` from `backgroundImageUrl` so uploading or setting header banners never overrides the form wallpaper background.
+  - Added "Remove Logo" and "Remove Banner" controls with inline loading spinners (`Loader2`) on active upload buttons.
+- **Theme & Branding Consolidation**:
+  - Consolidated all branding customizations (Brand Name, Tagline, Form Logo, Header Banner, and 2D alignment sliders) into the Theme & Design tab (`DesignPanel.tsx`).
+  - Streamlined Settings panel to focus purely on operational configuration (Public URL slug, deadlines, submission controls, webhook sync).
+- **Google Sheets Sync & Auto-Save Enhancements**:
+  - Modernized Google Sheets Integration modal (`GoogleSheetSyncModal.tsx`) with syntax-highlighted Apps Script code viewer, copy-to-clipboard actions, responsive sizing, and zero horizontal scroll overflow.
+  - Fixed sync webhook pipeline in server controllers (`server/controllers/form.controllers.js`) to sync all existing form responses immediately upon connecting Google Sheets.
+  - Fixed duplicate declaration bug in responses sheet grid status handlers.
+- **Individual Candidate Export (PDF, Excel, Word, JSON)**:
+  - Added multi-format candidate response export utility (`candidateExport.ts`) supporting Excel (.xlsx), Word Document (.doc), printable PDF formatting, and raw JSON.
+  - Integrated candidate export action menu directly into candidate response drawer (`ResponseDetailDrawer.tsx`).
+- **Response Analytics & Distribution Visualizations**:
+  - Question-by-question response breakdown in `ResponsesSummaryAnalytics.tsx` featuring visual distribution bars for Choice, Select, Checkbox, Rating, and Multiple Choice Grid question types.
+- **Design System & Modal Polish**:
+  - Upgraded all dialogs (`DialogContent`) to comfortable responsive sizing (`max-w-4xl` to `max-w-5xl`), `bg-background` tokens, smooth hidden scrollbars, and strict typography standards (zero `text-xs`).
+
+---
+
 ## [2.5.0] - 2026-09-03
 
 ### Added & Enhanced (App & Server)
