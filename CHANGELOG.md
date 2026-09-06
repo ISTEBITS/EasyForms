@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-This project follows **Semantic Versioning (SemVer)**:  
+This project follows **Semantic Versioning (SemVer)**:
 MAJOR.MINOR.PATCH (e.g., 2.5.0)
 
 ## [2.6.0] - 2026-09-07
@@ -177,20 +177,20 @@ MAJOR.MINOR.PATCH (e.g., 2.5.0)
 ## [2.0.0] - 2026-02-17
 
 ### Added
-- Markdown-based form header support  
-- Custom form banner image upload  
-- Brand name customization for forms  
-- Brand logo support  
-- Email notifications on form submission  
-- Time-based form submission deadline  
-- Response submission limit feature  
+- Markdown-based form header support
+- Custom form banner image upload
+- Brand name customization for forms
+- Brand logo support
+- Email notifications on form submission
+- Time-based form submission deadline
+- Response submission limit feature
 - Major changes to API to integrate the above features
 
 ### Improved
-- UI and UX improvements across admin dashboard and form editor  
+- UI and UX improvements across admin dashboard and form editor
 
 ### Fixed
-- Minor UI bugs and layout inconsistencies  
+- Minor UI bugs and layout inconsistencies
 
 ---
 
@@ -215,9 +215,9 @@ MAJOR.MINOR.PATCH (e.g., 2.5.0)
 
 ## Notes
 
-- Dates follow ISO format: YYYY-MM-DD  
-- Major releases may include breaking changes  
-- Patch releases include bug fixes and minor improvements  
+- Dates follow ISO format: YYYY-MM-DD
+- Major releases may include breaking changes
+- Patch releases include bug fixes and minor improvements
 
 ---
 
