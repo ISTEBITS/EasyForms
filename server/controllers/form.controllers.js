@@ -17,6 +17,8 @@ import {
   syncFormPublicationState,
   getClosedMessage,
   getClosedCode,
+  formatAnswerForSpreadsheet,
+  formatSubmissionDate,
 } from "../utils/form.utilities.js";
 import { dispatchWebhookEvent } from "../utils/webhookSigning.js";
 import {
@@ -543,9 +545,9 @@ export async function handleSubmitAResponse(req, res) {
     const emailSettings = form.settings?.emailNotification;
     const shouldSendReceipt = Boolean(
       emailSettings?.enabled &&
-        verifiedEmail &&
-        typeof verifiedEmail === "string" &&
-        verifiedEmail.trim(),
+      verifiedEmail &&
+      typeof verifiedEmail === "string" &&
+      verifiedEmail.trim(),
     );
 
     if (shouldSendReceipt) {
@@ -598,16 +600,19 @@ export async function handleSubmitAResponse(req, res) {
       void (async () => {
         try {
           const questions = (form.questions || []).filter((q) => q.type !== "section_break");
+          const submissionDate = formatSubmissionDate(
+            response.submittedAt,
+            req.body?.clientTimeZone || req.body?.timeZone,
+            req.body?.clientSubmittedAt || req.body?.clientTime
+          );
           const rowData = [
             response._id.toString(),
             response.status || "unreviewed",
-            response.submittedAt.toISOString(),
+            submissionDate,
             response.respondentEmail || "Anonymous",
             ...questions.map((q) => {
               const ans = response.answers.find((a) => a.questionId === q.id);
-              if (!ans) return "";
-              if (Array.isArray(ans.value)) return ans.value.join(", ");
-              return ans.value !== null && ans.value !== undefined ? String(ans.value) : "";
+              return formatAnswerForSpreadsheet(ans);
             }),
           ];
 
@@ -1244,13 +1249,11 @@ export async function handleSyncGoogleSheet(req, res) {
     const rows = responses.map((r) => [
       r._id.toString(),
       r.status || "unreviewed",
-      r.submittedAt ? new Date(r.submittedAt).toLocaleString() : "",
+      formatSubmissionDate(r.submittedAt, r.clientTimeZone, r.clientSubmittedAt),
       r.respondentEmail || "Anonymous",
       ...questions.map((q) => {
         const ans = r.answers.find((a) => a.questionId === q.id);
-        if (!ans) return "";
-        if (Array.isArray(ans.value)) return ans.value.join(", ");
-        return ans.value !== null && ans.value !== undefined ? String(ans.value) : "";
+        return formatAnswerForSpreadsheet(ans);
       }),
     ]);
 

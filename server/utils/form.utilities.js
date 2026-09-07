@@ -74,3 +74,59 @@ export async function syncFormPublicationState(form) {
   await form.save();
   return true;
 }
+
+// Submission Date format 
+export function formatSubmissionDate(dateValue, timeZone, clientSubmittedAt) {
+  if (clientSubmittedAt && typeof clientSubmittedAt === "string" && clientSubmittedAt.trim()) {
+    return clientSubmittedAt.trim();
+  }
+  if (!dateValue) return "";
+  const d = new Date(dateValue);
+  if (Number.isNaN(d.getTime())) return String(dateValue);
+
+  if (timeZone && typeof timeZone === "string") {
+    try {
+      return d.toLocaleString("en-US", {
+        timeZone,
+        year: "numeric",
+        month: "numeric",
+        day: "numeric",
+        hour: "numeric",
+        minute: "numeric",
+        second: "numeric",
+        hour12: true,
+      });
+    } catch {
+      // Ignore invalid timeZone error
+    }
+  }
+
+  return d.toLocaleString("en-US", {
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    second: "numeric",
+    hour12: true,
+  });
+}
+
+// Response Formatter
+export function formatAnswerForSpreadsheet(ans) {
+  if (!ans || ans.value === null || ans.value === undefined) return "";
+  const val = ans.value;
+  if (Array.isArray(val)) {
+    return val
+      .map((item) => (typeof item === "object" && item !== null ? JSON.stringify(item) : String(item)))
+      .join(", ");
+  }
+  if (typeof val === "object" && val !== null) {
+    if (typeof val.url === "string" && val.url) return val.url;
+    if (typeof val.name === "string" && val.name) return val.name;
+    const entries = Object.entries(val);
+    if (entries.length === 0) return "";
+    return entries.map(([row, col]) => `${row}: ${col}`).join("; ");
+  }
+  return String(val);
+}
