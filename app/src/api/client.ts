@@ -41,9 +41,9 @@ function hasSuccessFalse(
 ): payload is { success: false; message?: string; code?: string } {
   return Boolean(
     payload &&
-      typeof payload === "object" &&
-      "success" in payload &&
-      payload.success === false,
+    typeof payload === "object" &&
+    "success" in payload &&
+    payload.success === false,
   );
 }
 
