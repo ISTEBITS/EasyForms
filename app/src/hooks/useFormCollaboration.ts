@@ -83,9 +83,11 @@ export function useFormCollaboration({
               const allCollabs: CollaboratorPresence[] = message.collaborators || [];
               setCollaborators(allCollabs);
 
-              // Map remote active cursors (exclude current client)
+              // Map remote active cursors from all connected client tabs (exclude current client)
+              const clientList: CollaboratorPresence[] = message.clients || allCollabs;
               const cursors: Record<string, CollaboratorPresence> = {};
-              for (const collab of allCollabs) {
+
+              for (const collab of clientList) {
                 if (collab.clientId !== clientId && collab.activeCell) {
                   const { rowKey, rowIndex, colIndex, questionId } = collab.activeCell;
                   if (rowKey !== undefined && colIndex !== undefined) {
@@ -149,7 +151,7 @@ export function useFormCollaboration({
     };
   }, [formId, clientId]);
 
-  // Broadcast active cell focus / blur
+  // Broadcast active cell focus / blur / edit status
   const updatePresence = useCallback(
     async (
       activeCell: {
@@ -157,6 +159,7 @@ export function useFormCollaboration({
         rowIndex: number;
         colIndex: number;
         questionId?: string;
+        isEditing?: boolean;
       } | null
     ) => {
       if (!formId) return;

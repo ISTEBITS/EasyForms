@@ -83,30 +83,31 @@ export function broadcastPresence(formId) {
   const room = formRooms.get(formId);
   if (!room) return;
 
-  // Deduplicate collaborators by user identity (email or userId)
-  // so each user has exactly 1 avatar in the header avatar stack
+  // 1. All active client sessions (for exact cursor tracking per tab/client)
+  const allClients = [];
+  // 2. Distinct users for the header avatar stack
   const userMap = new Map();
 
   for (const c of room.values()) {
+    const clientData = {
+      clientId: c.clientId,
+      userId: c.userId,
+      name: c.name,
+      email: c.email,
+      role: c.role,
+      color: c.color,
+      activeCell: c.activeCell,
+      lastSeen: c.lastSeen,
+    };
+    allClients.push(clientData);
+
     const userKey = (c.email || c.userId || c.clientId).toLowerCase();
     const existing = userMap.get(userKey);
-
     if (!existing) {
-      userMap.set(userKey, {
-        clientId: c.clientId,
-        userId: c.userId,
-        name: c.name,
-        email: c.email,
-        role: c.role,
-        color: c.color,
-        activeCell: c.activeCell,
-        lastSeen: c.lastSeen,
-      });
+      userMap.set(userKey, { ...clientData });
     } else {
-      // Prioritize the tab that currently has an active cell focus
       if (c.activeCell) {
         existing.activeCell = c.activeCell;
-        existing.clientId = c.clientId;
       }
       if (c.lastSeen > (existing.lastSeen || 0)) {
         existing.lastSeen = c.lastSeen;
@@ -124,7 +125,11 @@ export function broadcastPresence(formId) {
     activeCell: u.activeCell,
   }));
 
-  const payload = JSON.stringify({ type: "presence_update", collaborators });
+  const payload = JSON.stringify({
+    type: "presence_update",
+    collaborators,
+    clients: allClients,
+  });
 
   for (const client of room.values()) {
     try {

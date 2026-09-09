@@ -56,11 +56,17 @@ export interface Question {
 }
 
 export type ResponseStatus =
+  | 'Unreviewed'
+  | 'Reviewed'
+  | 'Approved'
+  | 'Flagged'
+  | 'Rejected'
   | 'unreviewed'
   | 'reviewed'
   | 'approved'
   | 'flagged'
-  | 'rejected';
+  | 'rejected'
+  | (string & {});
 
 export interface ResponseNote {
   id: string;
@@ -90,6 +96,7 @@ export interface CollaboratorPresence {
     rowIndex: number;
     colIndex: number;
     questionId?: string;
+    isEditing?: boolean;
   } | null;
 }
 
