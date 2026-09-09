@@ -507,9 +507,12 @@ export async function handleSubmitAResponse(req, res) {
       ? String(verifiedEmail).trim().toLowerCase()
       : null;
 
+    const defaultStatus = form.settings?.statusOptions?.[0]?.label || "Unreviewed";
+
     const response = new Response({
       formId: req.params.id,
       answers: sanitize(req.body.answers),
+      status: defaultStatus,
       respondentEmail: respondentEmailValue,
       respondent: {
         name: verifiedName || (verifiedEmail ? String(verifiedEmail).split("@")[0] : "Anonymous"),
@@ -1219,7 +1222,7 @@ export async function handleSyncGoogleSheet(req, res) {
 
     const rows = responses.map((r) => [
       r._id.toString(),
-      r.status || "unreviewed",
+      r.status || "Unreviewed",
       formatSubmissionDate(r.submittedAt, r.clientTimeZone, r.clientSubmittedAt),
       r.respondentEmail || "Anonymous",
       ...questions.map((q) => {
