@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Images,
   Upload,
@@ -6,6 +6,7 @@ import {
   Check,
   Trash2,
   Loader2,
+  RefreshCw,
   Image as ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -17,14 +18,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { uploadFile } from "@/api/upload.api";
 import {
-  getStoredMediaAssets,
-  saveMediaAsset,
+  uploadFile,
+  fetchMediaAssets,
   deleteMediaAsset,
-  CURATED_STOCK_ASSETS,
   type MediaAsset,
-} from "@/utils/mediaLibrary";
+} from "@/api/upload.api";
 
 interface MediaLibraryModalProps {
   isOpen: boolean;
@@ -41,24 +40,38 @@ export const MediaLibraryModal: React.FC<MediaLibraryModalProps> = ({
   targetType = "all",
   currentValue,
 }) => {
-  const [activeTab, setActiveTab] = useState<"all" | "logo" | "banner" | "background" | "stock">(
+  const [activeTab, setActiveTab] = useState<"all" | "logo" | "banner" | "background">(
     targetType === "all" ? "all" : targetType
   );
   const [searchQuery, setSearchQuery] = useState("");
-  const [storedAssets, setStoredAssets] = useState<MediaAsset[]>([]);
+  const [cloudinaryAssets, setCloudinaryAssets] = useState<MediaAsset[]>([]);
+  const [isLoadingAssets, setIsLoadingAssets] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [deletingAssetId, setDeletingAssetId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const loadAssets = useCallback(async () => {
+    try {
+      setIsLoadingAssets(true);
+      const assets = await fetchMediaAssets();
+      setCloudinaryAssets(assets);
+    } catch {
+      toast.error("Failed to load assets from Cloudinary");
+    } finally {
+      setIsLoadingAssets(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
-      setStoredAssets(getStoredMediaAssets());
+      void loadAssets();
       if (targetType !== "all") {
         setActiveTab(targetType);
       } else {
         setActiveTab("all");
       }
     }
-  }, [isOpen, targetType]);
+  }, [isOpen, targetType, loadAssets]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -66,7 +79,6 @@ export const MediaLibraryModal: React.FC<MediaLibraryModalProps> = ({
 
     try {
       setIsUploading(true);
-      const uploaded = await uploadFile(file);
       const detectedType: MediaAsset["type"] =
         targetType === "logo"
           ? "logo"
@@ -76,19 +88,17 @@ export const MediaLibraryModal: React.FC<MediaLibraryModalProps> = ({
               ? "background"
               : "other";
 
-      const saved = saveMediaAsset({
-        url: uploaded.url,
-        name: file.name,
-        type: detectedType,
-        sizeBytes: file.size,
-      });
+      const uploaded = await uploadFile(file, detectedType);
+      await loadAssets();
 
-      setStoredAssets(getStoredMediaAssets());
-      toast.success("Asset uploaded and saved to library");
-      onSelectAsset(saved.url);
-      onClose();
-    } catch {
-      toast.error("Failed to upload image");
+      toast.success("Asset uploaded to Cloudinary successfully");
+      if (uploaded.url) {
+        onSelectAsset(uploaded.url);
+        onClose();
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to upload image";
+      toast.error(msg);
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
@@ -97,22 +107,24 @@ export const MediaLibraryModal: React.FC<MediaLibraryModalProps> = ({
     }
   };
 
-  const handleDelete = (e: React.MouseEvent, assetId: string) => {
+  const handleDelete = async (e: React.MouseEvent, asset: MediaAsset) => {
     e.stopPropagation();
-    deleteMediaAsset(assetId);
-    setStoredAssets(getStoredMediaAssets());
-    toast.success("Asset removed from library");
+    const identifier = asset.public_id || asset.id || asset.url;
+    try {
+      setDeletingAssetId(asset.id);
+      await deleteMediaAsset(identifier);
+      setCloudinaryAssets((prev) => prev.filter((a) => a.id !== asset.id && a.url !== asset.url));
+      toast.success("Asset deleted from Cloudinary");
+    } catch {
+      toast.error("Failed to delete asset from Cloudinary");
+    } finally {
+      setDeletingAssetId(null);
+    }
   };
 
   // Filter assets
-  const combinedAssets = [
-    ...storedAssets,
-    ...(activeTab === "stock" || activeTab === "all" ? CURATED_STOCK_ASSETS : []),
-  ];
-
-  const filteredAssets = combinedAssets.filter((asset) => {
-    if (activeTab === "stock" && !asset.isCurated) return false;
-    if (activeTab !== "all" && activeTab !== "stock" && asset.type !== activeTab) return false;
+  const filteredAssets = cloudinaryAssets.filter((asset) => {
+    if (activeTab !== "all" && asset.type !== activeTab) return false;
     if (!searchQuery.trim()) return true;
     return asset.name.toLowerCase().includes(searchQuery.toLowerCase().trim());
   });
@@ -136,6 +148,18 @@ export const MediaLibraryModal: React.FC<MediaLibraryModalProps> = ({
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void loadAssets()}
+                  disabled={isLoadingAssets || isUploading}
+                  className="gap-1.5 text-sm font-sans"
+                  title="Refresh Media from Cloudinary"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${isLoadingAssets ? "animate-spin" : ""}`} />
+                  <span className="hidden sm:inline">Refresh</span>
+                </Button>
+
                 <Button
                   variant="primary"
                   size="sm"
@@ -202,16 +226,6 @@ export const MediaLibraryModal: React.FC<MediaLibraryModalProps> = ({
                 >
                   Backgrounds
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("stock")}
-                  className={`px-3 py-1 text-sm font-medium rounded-xs transition-colors flex items-center gap-1 cursor-pointer ${activeTab === "stock"
-                      ? "bg-background text-foreground shadow-2xs font-semibold"
-                      : "text-accent-5 hover:text-foreground"
-                    }`}
-                >
-                  <span>Curated Presets</span>
-                </button>
               </div>
 
               {/* Search Input */}
@@ -231,10 +245,12 @@ export const MediaLibraryModal: React.FC<MediaLibraryModalProps> = ({
 
         {/* Asset Content Grid Area */}
         <div className="pt-2">
-
-
-          {/* Asset Grid */}
-          {filteredAssets.length === 0 ? (
+          {/* Loading state */}
+          {isLoadingAssets && cloudinaryAssets.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-8 sm:p-12 text-center space-y-3">
+              <Loader2 className="h-8 w-8 animate-spin text-accent-5" />
+            </div>
+          ) : filteredAssets.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-2 sm:p-8 rounded-sm border border-dashed border-border bg-accent-1/30 text-center space-y-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-2 text-accent-5">
                 <ImageIcon className="h-6 w-6" />
@@ -259,6 +275,7 @@ export const MediaLibraryModal: React.FC<MediaLibraryModalProps> = ({
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[20vh] sm:max-h-[52vh] overflow-y-auto hide-scrollbar p-0.5">
               {filteredAssets.map((asset) => {
                 const isSelected = currentValue === asset.url;
+                const isDeleting = deletingAssetId === asset.id;
                 return (
                   <div
                     key={asset.id}
@@ -285,11 +302,6 @@ export const MediaLibraryModal: React.FC<MediaLibraryModalProps> = ({
                           <Check className="h-3.5 w-3.5" />
                         </div>
                       )}
-                      {asset.isCurated && (
-                        <div className="absolute bottom-1.5 left-1.5 rounded-xs bg-background/85 px-1.5 py-0.5 text-sm font-medium text-foreground backdrop-blur-xs border border-border">
-                          Preset
-                        </div>
-                      )}
                     </div>
 
                     {/* Metadata & Actions */}
@@ -303,16 +315,19 @@ export const MediaLibraryModal: React.FC<MediaLibraryModalProps> = ({
                         </p>
                       </div>
 
-                      {!asset.isCurated && (
-                        <button
-                          type="button"
-                          onClick={(e) => handleDelete(e, asset.id)}
-                          className="flex h-7 w-7 items-center justify-center rounded-xs text-accent-4 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
-                          title="Delete from Library"
-                        >
+                      <button
+                        type="button"
+                        disabled={isDeleting}
+                        onClick={(e) => void handleDelete(e, asset)}
+                        className="flex h-7 w-7 items-center justify-center rounded-xs text-accent-4 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer disabled:opacity-50"
+                        title="Delete from Cloudinary"
+                      >
+                        {isDeleting ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-red-500" />
+                        ) : (
                           <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      )}
+                        )}
+                      </button>
                     </div>
                   </div>
                 );

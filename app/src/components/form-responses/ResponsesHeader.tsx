@@ -10,7 +10,6 @@ import {
   RefreshCw,
   Search,
   ChevronLeft,
-  Check,
   Eye,
   LayoutGrid,
   FileSpreadsheet,
@@ -127,7 +126,7 @@ export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
   return (
     <header className="sticky top-14 z-30 -mx-4 lg:-mx-6 px-4 lg:px-6 py-3 bg-background border-b border-border font-sans space-y-3 shadow-2xs">
       {/* Top Breadcrumb & Actions Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
           <button
             onClick={onBack}
@@ -166,27 +165,33 @@ export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
 
             {/* View-Only Badge for Viewers */}
             {isViewer && (
-              <span className="inline-flex items-center gap-1 rounded-sm border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-sm font-medium text-amber-500 font-sans">
+              <span className="inline-flex items-center gap-1 rounded-sm border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-sm font-medium text-amber-500 font-sans py-1">
                 <Eye className="h-3.5 w-3.5" />
-                <span>View only</span>
               </span>
             )}
 
             {/* Google Sheets-style Auto-Save Status Indicator */}
+            {!isViewer && saveStatus === "idle" && (
+              <span className="hidden md:inline-flex items-center gap-1.5 px-2 py-0.5 text-sm font-sans text-accent-5 max-w-15">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                <span>saved</span>
+              </span>
+            )}
+
             {!isViewer && saveStatus === "saving" && (
-              <span className="hidden md:inline-flex items-center gap-1.5 px-2 py-0.5 text-sm font-sans text-accent-5 animate-pulse">
+              <span className="hidden md:inline-flex items-center gap-1.5 px-2 py-0.5 text-sm font-sans text-accent-5 animate-pulse max-w-15">
                 <span className="h-2 w-2 rounded-full bg-amber-500" />
                 <span>Saving...</span>
               </span>
             )}
             {!isViewer && saveStatus === "saved" && (
-              <span className="hidden md:inline-flex items-center gap-1.5 px-2 py-0.5 text-sm font-sans text-accent-5">
-                <Check className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400" />
-                <span>All changes saved</span>
+              <span className="hidden md:inline-flex items-center gap-1.5 px-2 py-0.5 text-sm font-sans text-accent-5 max-w-15">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                <span>saved</span>
               </span>
             )}
             {!isViewer && saveStatus === "error" && (
-              <span className="hidden md:inline-flex items-center gap-1.5 px-2 py-0.5 text-sm font-sans text-red-500">
+              <span className="hidden md:inline-flex items-center gap-1.5 px-2 py-0.5 text-sm font-sans text-red-500 max-w-15">
                 <span className="h-2 w-2 rounded-full bg-red-500" />
                 <span>Failed to save</span>
               </span>
@@ -222,9 +227,8 @@ export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
                       <TooltipTrigger>
                         <div
                           style={{ backgroundColor: c.color }}
-                          className={`relative flex size-7 shrink-0 items-center justify-center rounded-full border-2 text-white text-sm font-bold shadow-xs cursor-pointer select-none transition-transform hover:scale-110 hover:z-20 ${
-                            isSelf ? "border-foreground ring-1 ring-background" : "border-background"
-                          }`}
+                          className={`relative flex size-7 shrink-0 items-center justify-center rounded-full border-2 text-white text-sm font-bold shadow-xs cursor-pointer select-none transition-transform hover:scale-110 hover:z-20 ${isSelf ? "border-foreground ring-1 ring-background" : "border-background"
+                            }`}
                         >
                           {initials}
                         </div>
@@ -250,8 +254,8 @@ export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
             <button
               onClick={() => onViewModeChange("sheet")}
               className={`inline-flex items-center gap-1.5 rounded-xs px-2.5 py-1 text-sm font-medium transition-all ${viewMode === "sheet"
-                  ? "bg-background text-foreground shadow-2xs"
-                  : "text-accent-5 hover:text-foreground"
+                ? "bg-background text-foreground shadow-2xs"
+                : "text-accent-5 hover:text-foreground"
                 }`}
             >
               <TableIcon className="h-3.5 w-3.5" />
@@ -260,8 +264,8 @@ export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
             <button
               onClick={() => onViewModeChange("analytics")}
               className={`inline-flex items-center gap-1.5 rounded-xs px-2.5 py-1 text-sm font-medium transition-all ${viewMode === "analytics"
-                  ? "bg-background text-foreground shadow-2xs"
-                  : "text-accent-5 hover:text-foreground"
+                ? "bg-background text-foreground shadow-2xs"
+                : "text-accent-5 hover:text-foreground"
                 }`}
             >
               <BarChart3 className="h-3.5 w-3.5" />
@@ -278,7 +282,6 @@ export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
               className="rounded-sm gap-1.5 font-sans h-8 text-sm"
             >
               <Share2 className="h-3.5 w-3.5 text-accent-6" />
-              <span>Share</span>
               {collaboratorCount > 0 && (
                 <span className="ml-1 inline-flex h-4 items-center justify-center rounded-xs bg-accent-2 px-1.5 text-sm font-sans text-foreground font-medium">
                   {collaboratorCount}
@@ -318,9 +321,8 @@ export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
                     }
                   >
                     <RefreshCw
-                      className={`h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 ${
-                        isSyncingGoogleSheet ? "animate-spin" : ""
-                      }`}
+                      className={`h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 ${isSyncingGoogleSheet ? "animate-spin" : ""
+                        }`}
                     />
                     <span>{isSyncingGoogleSheet ? "Syncing..." : "Sync"}</span>
                   </Button>
@@ -368,7 +370,6 @@ export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
                 title="Import CSV Responses"
               >
                 <Upload className="h-3.5 w-3.5 text-accent-5" />
-                <span className="hidden sm:inline">Import</span>
               </Button>
             )}
             <div className="relative group">
@@ -379,7 +380,6 @@ export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
                 onClick={() => onExport("csv")}
               >
                 <Download className="h-3.5 w-3.5 text-accent-5" />
-                <span>Export</span>
               </Button>
             </div>
           </div>
@@ -392,7 +392,6 @@ export const ResponsesHeader: React.FC<ResponsesHeaderProps> = ({
               className="rounded-sm gap-1.5 bg-foreground text-background hover:bg-accent-7 font-sans h-8 text-sm"
             >
               <Plus className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Add Row</span>
             </Button>
           )}
 

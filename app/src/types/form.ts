@@ -148,6 +148,25 @@ export interface GoogleSheetIntegration {
   autoSync?: boolean;
 }
 
+export type StatusColorKey =
+  | "gray"
+  | "blue"
+  | "emerald"
+  | "amber"
+  | "red"
+  | "purple"
+  | "teal"
+  | "pink"
+  | "indigo"
+  | "orange"
+  | "cyan";
+
+export interface StatusOption {
+  id: string;
+  label: string;
+  colorKey: StatusColorKey;
+}
+
 export interface FormSettings {
   allowMultipleResponses: boolean;
   requireLogin: boolean;
@@ -156,6 +175,7 @@ export interface FormSettings {
   responseDeadlineAt?: string | null;
   maxResponses?: number | null;
   closedMessage?: string;
+  statusOptions?: StatusOption[];
   emailNotification: FormEmailNotification;
   googleSheet?: GoogleSheetIntegration;
   redirectUrl?: string;

@@ -54,7 +54,6 @@ export function useForms({ autoFetch = true }: UseFormsOptions = {}): UseFormsRe
       setForms((prev) =>
         prev.map((f) => (f.id === id ? updatedForm : f))
       );
-      toast.success('Form updated successfully!');
       return updatedForm;
     } catch (err) {
       const message = getApiErrorMessage(err, 'Failed to update form');

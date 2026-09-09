@@ -24,7 +24,7 @@ const ResponseSchema = new mongoose.Schema({
   respondentEmail: { type: String, default: null },
   status: {
     type: String,
-    default: "unreviewed",
+    default: "Unreviewed",
   },
   tags: { type: [String], default: [] },
   notes: { type: [NoteSchema], default: [] },

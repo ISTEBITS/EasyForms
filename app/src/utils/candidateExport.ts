@@ -32,7 +32,7 @@ export function exportCandidateToDoc(
 ) {
   const candidateEmail = response.respondentEmail || "Anonymous Respondent";
   const submissionDate = new Date(response.submittedAt).toLocaleString();
-  const status = (response.status || "unreviewed").toUpperCase();
+  const status = (response.status || "Unreviewed").toUpperCase();
 
   const rowsHtml = questions
     .filter((q) => q.type !== "section_break")
@@ -134,7 +134,7 @@ export function exportCandidateToExcel(
 ) {
   const candidateEmail = response.respondentEmail || "Anonymous Respondent";
   const submissionDate = new Date(response.submittedAt).toLocaleString();
-  const status = response.status || "unreviewed";
+  const status = response.status || "Unreviewed";
 
   const rows: Array<[string, string]> = [
     ["Form Title", formTitle],
@@ -190,7 +190,7 @@ export function exportCandidateToPdf(
 ) {
   const candidateEmail = response.respondentEmail || "Anonymous Respondent";
   const submissionDate = new Date(response.submittedAt).toLocaleString();
-  const status = (response.status || "unreviewed").toUpperCase();
+  const status = (response.status || "Unreviewed").toUpperCase();
 
   const questionsHtml = questions
     .filter((q) => q.type !== "section_break")

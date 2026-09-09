@@ -72,6 +72,12 @@ const FormThemeSchema = new mongoose.Schema({
   brandTagline: { type: String, default: "" },
 });
 
+const StatusOptionSchema = new mongoose.Schema({
+  id: { type: String, required: true },
+  label: { type: String, required: true },
+  colorKey: { type: String, default: "gray" },
+});
+
 const FormSettingsSchema = new mongoose.Schema({
   allowMultipleResponses: { type: Boolean, default: false },
   requireLogin: { type: Boolean, default: false },
@@ -92,6 +98,16 @@ const FormSettingsSchema = new mongoose.Schema({
   closedMessage: {
     type: String,
     default: "This form is no longer accepting responses.",
+  },
+  statusOptions: {
+    type: [StatusOptionSchema],
+    default: [
+      { id: "Unreviewed", label: "Unreviewed", colorKey: "gray" },
+      { id: "Reviewed", label: "Reviewed", colorKey: "blue" },
+      { id: "Approved", label: "Approved", colorKey: "emerald" },
+      { id: "Flagged", label: "Flagged", colorKey: "amber" },
+      { id: "Rejected", label: "Rejected", colorKey: "red" },
+    ],
   },
   emailNotification: {
     enabled: { type: Boolean, default: false },
