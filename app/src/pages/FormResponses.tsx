@@ -275,32 +275,26 @@ export const FormResponses = () => {
     }
   };
 
-  // Cell Update (Google Sheets-style silent auto-saving)
+  // Cell Update (Google Sheets-style silent optimistic auto-saving)
   const handleUpdateCell = async (responseId: string, questionId: string, value: unknown) => {
     if (!form) return;
     setSaveStatus("saving");
-    try {
-      const currentResponse = responses.find((r) => (r.id || r._id) === responseId);
-      if (!currentResponse) {
-        setSaveStatus("idle");
-        return;
-      }
 
-      if (questionId === "__email__") {
-        const updated = await formsApi.updateResponse(form.id, responseId, {
-          respondentEmail: String(value || "").trim(),
-          clientId,
-        });
-        setResponses((prev) =>
-          prev.map((r) => ((r.id || r._id) === responseId ? updated : r))
-        );
-        triggerSavedStatus();
-        return;
-      }
+    const currentResponse = responses.find((r) => (r.id || r._id) === responseId);
+    if (!currentResponse) {
+      setSaveStatus("idle");
+      return;
+    }
 
-      const existingAnswers = [...currentResponse.answers];
+    // 1. Optimistically update local responses state immediately
+    if (questionId === "__email__") {
+      const emailVal = String(value || "").trim();
+      setResponses((prev) =>
+        prev.map((r) => ((r.id || r._id) === responseId ? { ...r, respondentEmail: emailVal } : r))
+      );
+    } else {
+      const existingAnswers = [...(currentResponse.answers || [])];
       const answerIndex = existingAnswers.findIndex((a) => a.questionId === questionId);
-
       if (answerIndex >= 0) {
         existingAnswers[answerIndex] = {
           ...existingAnswers[answerIndex],
@@ -309,11 +303,32 @@ export const FormResponses = () => {
       } else {
         existingAnswers.push({ questionId, value: value as Answer["value"] });
       }
+      setResponses((prev) =>
+        prev.map((r) => ((r.id || r._id) === responseId ? { ...r, answers: existingAnswers } : r))
+      );
+    }
 
-      const updated = await formsApi.updateResponse(form.id, responseId, {
-        answers: existingAnswers,
-        clientId,
-      });
+    // 2. Persist to API in background
+    try {
+      let updated: FormResponse;
+      if (questionId === "__email__") {
+        updated = await formsApi.updateResponse(form.id, responseId, {
+          respondentEmail: String(value || "").trim(),
+          clientId,
+        });
+      } else {
+        const answersToSave = [...(currentResponse.answers || [])];
+        const idx = answersToSave.findIndex((a) => a.questionId === questionId);
+        if (idx >= 0) {
+          answersToSave[idx] = { ...answersToSave[idx], value: value as Answer["value"] };
+        } else {
+          answersToSave.push({ questionId, value: value as Answer["value"] });
+        }
+        updated = await formsApi.updateResponse(form.id, responseId, {
+          answers: answersToSave,
+          clientId,
+        });
+      }
 
       setResponses((prev) =>
         prev.map((r) => ((r.id || r._id) === responseId ? updated : r))
@@ -325,10 +340,19 @@ export const FormResponses = () => {
     }
   };
 
-  // Status Update
+  // Status Update (Optimistic + silent background save)
   const handleUpdateStatus = async (responseId: string, status: ResponseStatus) => {
     if (!form) return;
     setSaveStatus("saving");
+
+    // Optimistic UI update
+    setResponses((prev) =>
+      prev.map((r) => ((r.id || r._id) === responseId ? { ...r, status } : r))
+    );
+    if (selectedDetailResponse && (selectedDetailResponse.id || selectedDetailResponse._id) === responseId) {
+      setSelectedDetailResponse((prev) => prev ? { ...prev, status } : null);
+    }
+
     try {
       const updated = await formsApi.updateResponse(form.id, responseId, { status, clientId });
       setResponses((prev) =>
@@ -341,6 +365,27 @@ export const FormResponses = () => {
     } catch {
       setSaveStatus("error");
       toast.error("Failed to update status");
+    }
+  };
+
+  const handleStatusOptionsChange = (newOptions: StatusOption[], renameMap?: Record<string, string>) => {
+    setStatusOptions(newOptions);
+    try {
+      localStorage.setItem("easyforms_custom_statuses", JSON.stringify(newOptions));
+    } catch {
+      // ignore
+    }
+
+    if (renameMap && Object.keys(renameMap).length > 0) {
+      setResponses((prev) =>
+        prev.map((r) => {
+          const curr = r.status || "";
+          if (renameMap[curr] || renameMap[curr.toLowerCase()]) {
+            return { ...r, status: renameMap[curr] || renameMap[curr.toLowerCase()] };
+          }
+          return r;
+        })
+      );
     }
   };
 
@@ -675,7 +720,7 @@ export const FormResponses = () => {
             remoteCursors={remoteCursors}
             onActiveCellChange={updatePresence}
             statusOptions={statusOptions}
-            onStatusOptionsChange={setStatusOptions}
+            onStatusOptionsChange={handleStatusOptionsChange}
           />
         ) : (
           <ResponsesSummaryAnalytics
@@ -695,6 +740,7 @@ export const FormResponses = () => {
         onUpdateStatus={handleUpdateStatus}
         onAddNote={handleAddNote}
         onDelete={handleDeleteRow}
+        statusOptions={statusOptions}
       />
 
       {/* Collaboration / Share Modal */}
@@ -722,6 +768,7 @@ export const FormResponses = () => {
         isOpen={isManualModalOpen}
         onClose={() => setIsManualModalOpen(false)}
         questions={questions}
+        statusOptions={statusOptions}
         onSubmit={async (data) => {
           await handleManualCreateResponse(data);
         }}

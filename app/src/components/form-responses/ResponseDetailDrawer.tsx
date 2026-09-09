@@ -28,6 +28,8 @@ import {
   exportCandidateToDoc,
 } from "@/utils/candidateExport";
 
+import { DEFAULT_STATUS_OPTIONS, type StatusOption } from "./StatusManagerModal";
+
 interface ResponseDetailDrawerProps {
   response: FormResponse | null;
   questions: Question[];
@@ -37,6 +39,7 @@ interface ResponseDetailDrawerProps {
   onUpdateStatus: (responseId: string, status: ResponseStatus) => Promise<void>;
   onAddNote: (responseId: string, noteText: string) => Promise<void>;
   onDelete: (responseId: string) => Promise<void>;
+  statusOptions?: StatusOption[];
 }
 
 export const ResponseDetailDrawer: React.FC<ResponseDetailDrawerProps> = ({
@@ -48,6 +51,7 @@ export const ResponseDetailDrawer: React.FC<ResponseDetailDrawerProps> = ({
   onUpdateStatus,
   onAddNote,
   onDelete,
+  statusOptions = DEFAULT_STATUS_OPTIONS,
 }) => {
   const [newNote, setNewNote] = useState("");
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
@@ -162,15 +166,21 @@ export const ResponseDetailDrawer: React.FC<ResponseDetailDrawerProps> = ({
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-accent-5 font-sans">Status</span>
               <select
-                value={response.status || "unreviewed"}
+                value={
+                  statusOptions.find(
+                    (opt) =>
+                      opt.label.toLowerCase() === String(response.status || "").toLowerCase() ||
+                      opt.id.toLowerCase() === String(response.status || "").toLowerCase()
+                  )?.label || response.status || "Unreviewed"
+                }
                 onChange={(e) => void onUpdateStatus(rowId, e.target.value as ResponseStatus)}
                 className="rounded-sm border border-border bg-background px-3 py-1 text-sm font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-foreground cursor-pointer font-sans"
               >
-                <option value="unreviewed">Unreviewed</option>
-                <option value="reviewed">Reviewed</option>
-                <option value="approved">Approved</option>
-                <option value="flagged">Flagged</option>
-                <option value="rejected">Rejected</option>
+                {statusOptions.map((opt) => (
+                  <option key={opt.id} value={opt.label}>
+                    {opt.label}
+                  </option>
+                ))}
               </select>
             </div>
 

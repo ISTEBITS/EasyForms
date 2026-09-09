@@ -34,7 +34,7 @@ const APPS_SCRIPT_CODE = `function doPost(e) {
   try {
     var raw = e.postData ? e.postData.contents : "";
     var data = typeof raw === "string" && raw.length > 0 ? JSON.parse(raw) : (e.parameter || {});
-    
+        
     var ss = null;
     if (data.sheetUrl) {
       try { ss = SpreadsheetApp.openByUrl(data.sheetUrl); } catch (err) {}
@@ -46,45 +46,153 @@ const APPS_SCRIPT_CODE = `function doPost(e) {
       try { ss = SpreadsheetApp.getActiveSpreadsheet(); } catch (err) {}
     }
     if (!ss) {
-      throw new Error("Could not open spreadsheet. Please provide a valid Sheet URL.");
+      throw new Error("Could not open spreadsheet. Please ensure the script is attached to your sheet or a valid Sheet URL is provided.");
     }
-    
+        
     var sheetName = data.sheetName || "Responses";
-    var sheet = ss.getSheetByName(sheetName) || ss.insertSheet(sheetName);
-    
+    var sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      sheet = ss.insertSheet(sheetName);
+    }
+
+    function formatVal(val) {
+      if (val === undefined || val === null) return "";
+      return typeof val === "object" ? JSON.stringify(val) : String(val);
+    }
+
+    // 1. ACTION: sync_all (Preserves custom user columns if present)
     if (data.action === "sync_all" && data.headers && Array.isArray(data.rows)) {
-      sheet.clear();
-      sheet.appendRow(data.headers);
-      
+      var numEasyCols = data.headers.length;
+      var lastCol = Math.max(sheet.getLastColumn(), numEasyCols);
+      var lastRow = Math.max(sheet.getLastRow(), 1);
+
+      // Write/update EasyForms headers in Row 1 without wiping custom columns
+      var formattedHeaders = data.headers.map(formatVal);
+      sheet.getRange(1, 1, 1, numEasyCols).setValues([formattedHeaders]);
+
+      // Format header with Google Forms style
+      formatHeaderRow(sheet, lastCol, data.rows.length);
+
+      // Write EasyForms row data starting at Row 2, Columns 1..numEasyCols
       if (data.rows.length > 0) {
-        var numCols = data.headers.length;
         var formattedRows = data.rows.map(function(row) {
           var formatted = [];
-          for (var i = 0; i < numCols; i++) {
-            var val = (row && row[i] !== undefined && row[i] !== null) ? row[i] : "";
-            formatted.push(typeof val === "object" ? JSON.stringify(val) : String(val));
+          for (var i = 0; i < numEasyCols; i++) {
+            formatted.push(formatVal(row && row[i]));
           }
           return formatted;
         });
-        sheet.getRange(2, 1, formattedRows.length, numCols).setValues(formattedRows);
+
+        sheet.getRange(2, 1, formattedRows.length, numEasyCols).setValues(formattedRows);
+
+        // Format data rows with comfortable cell padding & middle alignment
+        formatDataRows(sheet, 2, formattedRows.length, numEasyCols);
+
+        if (lastRow > formattedRows.length + 1) {
+          sheet.getRange(formattedRows.length + 2, 1, lastRow - (formattedRows.length + 1), numEasyCols).clearContent();
+        }
+      } else {
+        if (lastRow > 1) {
+          sheet.getRange(2, 1, lastRow - 1, numEasyCols).clearContent();
+        }
       }
-      try { sheet.autoResizeColumns(1, data.headers.length); } catch (e) {}
-      
+
+      // Apply alternating grayish zebra striping across data rows
+      applyAlternatingRowColors(sheet, (data.rows.length || 0) + 1, lastCol);
+
+      // Apply generous column width padding matching Google Forms
+      adjustColumnWidthsAndPadding(sheet, numEasyCols);
+
       return ContentService.createTextOutput(JSON.stringify({ status: "success", count: data.rows.length }))
         .setMimeType(ContentService.MimeType.JSON);
-    } 
-    
+    }
+
+    // 2. ACTION: append_row (Appends new submission without overwriting user columns)
     if (data.action === "append_row" && data.row) {
-      var rowToAppend = Array.isArray(data.row) ? data.row.map(function(v) {
-        return (v === undefined || v === null) ? "" : (typeof v === "object" ? JSON.stringify(v) : String(v));
-      }) : [String(data.row)];
-      
-      sheet.appendRow(rowToAppend);
-      return ContentService.createTextOutput(JSON.stringify({ status: "success", appended: true }))
+      var rowData = Array.isArray(data.row) ? data.row.map(formatVal) : [formatVal(data.row)];
+      var numCols = rowData.length;
+
+      if (sheet.getLastRow() === 0 && data.headers && Array.isArray(data.headers)) {
+        sheet.getRange(1, 1, 1, data.headers.length).setValues([data.headers.map(formatVal)]);
+        formatHeaderRow(sheet, data.headers.length, 1);
+      }
+
+      var nextRow = sheet.getLastRow() + 1;
+      sheet.getRange(nextRow, 1, 1, numCols).setValues([rowData]);
+
+      // Apply comfortable cell padding and formatting
+      formatDataRows(sheet, nextRow, 1, numCols);
+
+      // Apply alternating subtle grayish background touch to the new row
+      var rowBg = (nextRow % 2 === 0) ? "#FFFFFF" : "#F8F9FA";
+      sheet.getRange(nextRow, 1, 1, numCols).setBackground(rowBg);
+
+      // Adjust column width padding
+      adjustColumnWidthsAndPadding(sheet, numCols);
+
+      return ContentService.createTextOutput(JSON.stringify({ status: "success", appended: true, rowNumber: nextRow }))
         .setMimeType(ContentService.MimeType.JSON);
     }
-    
-    return ContentService.createTextOutput(JSON.stringify({ status: "success" }))
+
+    // 3. ACTION: update_row (Updates specific row in-place by uniqueKey matching Column 1)
+    if (data.action === "update_row" && data.row) {
+      var rowData = Array.isArray(data.row) ? data.row.map(formatVal) : [formatVal(data.row)];
+      var numCols = rowData.length;
+      var uniqueKey = String(data.uniqueKey || (rowData.length > 0 ? rowData[0] : "")).trim();
+
+      var lastRow = sheet.getLastRow();
+      var foundRow = -1;
+
+      if (lastRow > 1) {
+        var idColumnValues = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+        for (var r = 0; r < idColumnValues.length; r++) {
+          if (String(idColumnValues[r][0]).trim() === uniqueKey) {
+            foundRow = r + 2;
+            break;
+          }
+        }
+      }
+
+      if (foundRow > 0) {
+        // Update ONLY EasyForms columns so user custom columns are NEVER modified
+        sheet.getRange(foundRow, 1, 1, numCols).setValues([rowData]);
+        formatDataRows(sheet, foundRow, 1, numCols);
+
+        var updateBg = (foundRow % 2 === 0) ? "#FFFFFF" : "#F8F9FA";
+        sheet.getRange(foundRow, 1, 1, numCols).setBackground(updateBg);
+        return ContentService.createTextOutput(JSON.stringify({ status: "success", updated: true, rowNumber: foundRow }))
+          .setMimeType(ContentService.MimeType.JSON);
+      } else {
+        var targetRow = lastRow + 1;
+        sheet.getRange(targetRow, 1, 1, numCols).setValues([rowData]);
+        formatDataRows(sheet, targetRow, 1, numCols);
+
+        var newBg = (targetRow % 2 === 0) ? "#FFFFFF" : "#F8F9FA";
+        sheet.getRange(targetRow, 1, 1, numCols).setBackground(newBg);
+        return ContentService.createTextOutput(JSON.stringify({ status: "success", appended: true, rowNumber: targetRow }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+
+    // 4. ACTION: delete_row (Deletes specific row by uniqueKey matching Column 1)
+    if (data.action === "delete_row" && data.uniqueKey) {
+      var uniqueKey = String(data.uniqueKey).trim();
+      var lastRow = sheet.getLastRow();
+      if (lastRow > 1) {
+        var idColumnValues = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+        for (var r = 0; r < idColumnValues.length; r++) {
+          if (String(idColumnValues[r][0]).trim() === uniqueKey) {
+            sheet.deleteRow(r + 2);
+            return ContentService.createTextOutput(JSON.stringify({ status: "success", deleted: true }))
+              .setMimeType(ContentService.MimeType.JSON);
+          }
+        }
+      }
+      return ContentService.createTextOutput(JSON.stringify({ status: "not_found", message: "Row not found" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+        
+    return ContentService.createTextOutput(JSON.stringify({ status: "success", message: "Ready" }))
       .setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ status: "error", message: err.toString() }))
@@ -92,8 +200,90 @@ const APPS_SCRIPT_CODE = `function doPost(e) {
   }
 }
 
+function formatHeaderRow(sheet, numColumns, totalDataRows) {
+  if (!numColumns || numColumns < 1) return;
+  var headerRange = sheet.getRange(1, 1, 1, numColumns);
+
+  headerRange
+    .setBackground("#5E35B1")        // Google Forms Purple header
+    .setFontColor("#FFFFFF")         // White text
+    .setFontWeight("bold")           // Bold text
+    .setFontFamily("Roboto")
+    .setFontSize(10)
+    .setHorizontalAlignment("left")  // Clean left alignment matching questions
+    .setVerticalAlignment("middle")  // Middle vertical alignment for padding
+    .setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP);
+
+  sheet.setRowHeight(1, 40);
+  sheet.setFrozenRows(1);
+
+  try {
+    var existingFilter = sheet.getFilter();
+    if (existingFilter) {
+      existingFilter.remove();
+    }
+    var filterRows = Math.max((totalDataRows || 0) + 1, 2);
+    sheet.getRange(1, 1, filterRows, numColumns).createFilter();
+  } catch (filterErr) {}
+}
+
+function formatDataRows(sheet, startRow, numRows, numColumns) {
+  if (!startRow || !numRows || numRows < 1 || !numColumns || numColumns < 1) return;
+  try {
+    var dataRange = sheet.getRange(startRow, 1, numRows, numColumns);
+    dataRange
+      .setFontFamily("Roboto")
+      .setFontSize(10)
+      .setFontColor("#202124")
+      .setHorizontalAlignment("left")
+      .setVerticalAlignment("middle")
+      .setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP);
+
+    // Set subtle light border for crisp Google Sheets cell separation
+    dataRange.setBorder(true, true, true, true, true, true, "#E8EAED", SpreadsheetApp.BorderStyle.SOLID);
+
+    // Set 32px height for comfortable vertical cell padding
+    for (var r = 0; r < numRows; r++) {
+      try { sheet.setRowHeight(startRow + r, 32); } catch (hErr) {}
+    }
+  } catch (err) {}
+}
+
+function adjustColumnWidthsAndPadding(sheet, numColumns) {
+  if (!numColumns || numColumns < 1) return;
+  try {
+    sheet.autoResizeColumns(1, numColumns);
+    for (var c = 1; c <= numColumns; c++) {
+      var currentWidth = sheet.getColumnWidth(c);
+      // Add +32px extra padding so text never touches cell edges, with min width of 140px
+      var paddedWidth = Math.max(currentWidth + 32, 140);
+      sheet.setColumnWidth(c, paddedWidth);
+    }
+  } catch (err) {}
+}
+
+function applyAlternatingRowColors(sheet, totalRows, numColumns) {
+  if (!totalRows || totalRows <= 1 || !numColumns || numColumns < 1) return;
+  try {
+    var bandings = sheet.getBandings();
+    for (var i = 0; i < bandings.length; i++) {
+      bandings[i].remove();
+    }
+    var tableRange = sheet.getRange(1, 1, totalRows, numColumns);
+    tableRange.applyRowBanding(SpreadsheetApp.BandingTheme.LIGHT_GREY, true, false)
+      .setHeaderRowColor("#5E35B1")
+      .setFirstRowColor("#FFFFFF")
+      .setSecondRowColor("#F8F9FA");
+  } catch (e) {
+    for (var r = 2; r <= totalRows; r++) {
+      var bg = (r % 2 === 0) ? "#FFFFFF" : "#F8F9FA";
+      sheet.getRange(r, 1, 1, numColumns).setBackground(bg);
+    }
+  }
+}
+
 function doGet(e) {
-  return ContentService.createTextOutput(JSON.stringify({ status: "ready" }))
+  return ContentService.createTextOutput(JSON.stringify({ status: "ready", message: "EasyForms Google Sheets Webhook is active." }))
     .setMimeType(ContentService.MimeType.JSON);
 }`;
 

@@ -2,11 +2,13 @@ import React, { useState } from "react";
 import { X, Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Question, Answer, ResponseStatus } from "@/types/form";
+import { DEFAULT_STATUS_OPTIONS, type StatusOption } from "./StatusManagerModal";
 
 interface ManualResponseModalProps {
   isOpen: boolean;
   onClose: () => void;
   questions: Question[];
+  statusOptions?: StatusOption[];
   onSubmit: (data: {
     answers: Answer[];
     respondentEmail?: string;
@@ -19,11 +21,14 @@ export const ManualResponseModal: React.FC<ManualResponseModalProps> = ({
   isOpen,
   onClose,
   questions,
+  statusOptions = DEFAULT_STATUS_OPTIONS,
   onSubmit,
 }) => {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
-  const [status, setStatus] = useState<ResponseStatus>("reviewed");
+  const [status, setStatus] = useState<ResponseStatus>(
+    statusOptions[0]?.label || "Unreviewed"
+  );
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -117,10 +122,11 @@ export const ManualResponseModal: React.FC<ManualResponseModalProps> = ({
                 onChange={(e) => setStatus(e.target.value as ResponseStatus)}
                 className="w-full rounded-sm border border-border bg-background px-2.5 py-1.5 text-sm font-medium text-foreground focus:outline-none cursor-pointer font-sans"
               >
-                <option value="unreviewed">Unreviewed</option>
-                <option value="reviewed">Reviewed</option>
-                <option value="approved">Approved</option>
-                <option value="flagged">Flagged</option>
+                {statusOptions.map((opt) => (
+                  <option key={opt.id} value={opt.label}>
+                    {opt.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>

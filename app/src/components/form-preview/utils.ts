@@ -11,9 +11,7 @@ export const buildPages = (questions: Question[]): FormPage[] => {
 
   for (const question of questions) {
     if (question.type === "section_break") {
-      if (currentPage.questions.length > 0 || pages.length === 0) {
-        pages.push(currentPage);
-      }
+      pages.push(currentPage);
       index += 1;
       currentPage = {
         id: `page-${index}`,

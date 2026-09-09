@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Trash2, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -107,18 +107,23 @@ export const STATUS_COLORS: Record<
 };
 
 export const DEFAULT_STATUS_OPTIONS: StatusOption[] = [
-  { id: "unreviewed", label: "Unreviewed", colorKey: "gray" },
-  { id: "reviewed", label: "Reviewed", colorKey: "blue" },
-  { id: "approved", label: "Approved", colorKey: "emerald" },
-  { id: "flagged", label: "Flagged", colorKey: "amber" },
-  { id: "rejected", label: "Rejected", colorKey: "red" },
+  { id: "Unreviewed", label: "Unreviewed", colorKey: "gray" },
+  { id: "Reviewed", label: "Reviewed", colorKey: "blue" },
+  { id: "Approved", label: "Approved", colorKey: "emerald" },
+  { id: "Flagged", label: "Flagged", colorKey: "amber" },
+  { id: "Rejected", label: "Rejected", colorKey: "red" },
 ];
+
+interface InternalStatusOption extends StatusOption {
+  _key: string;
+  originalId: string;
+}
 
 interface StatusManagerModalProps {
   isOpen: boolean;
   onClose: () => void;
   statusOptions: StatusOption[];
-  onSaveOptions: (options: StatusOption[]) => void;
+  onSaveOptions: (options: StatusOption[], renameMap?: Record<string, string>) => void;
 }
 
 export function StatusManagerModal({
@@ -127,43 +132,61 @@ export function StatusManagerModal({
   statusOptions,
   onSaveOptions,
 }: StatusManagerModalProps) {
-  const [options, setOptions] = useState<StatusOption[]>(statusOptions);
+  const [options, setOptions] = useState<InternalStatusOption[]>([]);
   const [newStatusLabel, setNewStatusLabel] = useState("");
   const [newStatusColor, setNewStatusColor] = useState<StatusColorKey>("purple");
+
+  // Re-sync options when modal opens or statusOptions change
+  useEffect(() => {
+    if (isOpen) {
+      setOptions(
+        statusOptions.map((opt, idx) => ({
+          ...opt,
+          _key: `status_${opt.id || opt.label}_${idx}_${Date.now()}_${Math.random()}`,
+          originalId: opt.id || opt.label,
+        }))
+      );
+      setNewStatusLabel("");
+    }
+  }, [isOpen, statusOptions]);
 
   if (!isOpen) return null;
 
   const handleUpdateOption = (
-    id: string,
-    updates: Partial<StatusOption>
+    key: string,
+    updates: Partial<Pick<StatusOption, "label" | "colorKey">>
   ) => {
     setOptions((prev) =>
-      prev.map((opt) => (opt.id === id ? { ...opt, ...updates } : opt))
+      prev.map((opt) => {
+        if (opt._key !== key) return opt;
+        return {
+          ...opt,
+          ...updates,
+        };
+      })
     );
   };
 
-  const handleDeleteOption = (id: string) => {
+  const handleDeleteOption = (key: string) => {
     if (options.length <= 1) return;
-    setOptions((prev) => prev.filter((opt) => opt.id !== id));
+    setOptions((prev) => prev.filter((opt) => opt._key !== key));
   };
 
   const handleAddNewStatus = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newStatusLabel.trim()) return;
+    const label = newStatusLabel.trim();
+    if (!label) return;
 
-    const id = newStatusLabel
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "_");
+    // If duplicate label already exists, don't add
+    if (options.some((o) => o.label.trim().toLowerCase() === label.toLowerCase())) {
+      return;
+    }
 
-    // Avoid duplicate IDs
-    const finalId = options.some((o) => o.id === id)
-      ? `${id}_${Date.now()}`
-      : id;
-
-    const newOption: StatusOption = {
-      id: finalId,
-      label: newStatusLabel.trim(),
+    const newOption: InternalStatusOption = {
+      _key: `status_new_${Date.now()}_${Math.random()}`,
+      originalId: "",
+      id: label,
+      label: label,
       colorKey: newStatusColor,
     };
 
@@ -172,7 +195,23 @@ export function StatusManagerModal({
   };
 
   const handleSaveAndClose = () => {
-    onSaveOptions(options);
+    // Build a rename map: old status value -> new status value
+    const renameMap: Record<string, string> = {};
+
+    const cleanOptions: StatusOption[] = options.map((opt) => {
+      const finalLabel = opt.label.trim() || opt.originalId || "Status";
+      if (opt.originalId && opt.originalId !== finalLabel) {
+        renameMap[opt.originalId] = finalLabel;
+        renameMap[opt.originalId.toLowerCase()] = finalLabel;
+      }
+      return {
+        id: finalLabel,
+        label: finalLabel,
+        colorKey: opt.colorKey,
+      };
+    });
+
+    onSaveOptions(cleanOptions, renameMap);
     onClose();
   };
 
@@ -213,7 +252,7 @@ export function StatusManagerModal({
               {options.map((opt) => {
                 return (
                   <div
-                    key={opt.id}
+                    key={opt._key}
                     className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 p-3 rounded-sm border border-border bg-background"
                   >
                     {/* Status Label Input */}
@@ -221,7 +260,7 @@ export function StatusManagerModal({
                       <Input
                         value={opt.label}
                         onChange={(e) =>
-                          handleUpdateOption(opt.id, { label: e.target.value })
+                          handleUpdateOption(opt._key, { label: e.target.value })
                         }
                         placeholder="Status label..."
                         className="h-8 border-border bg-background text-sm font-medium text-foreground"
@@ -240,7 +279,7 @@ export function StatusManagerModal({
                               type="button"
                               title={c.name}
                               onClick={() =>
-                                handleUpdateOption(opt.id, { colorKey: cKey })
+                                handleUpdateOption(opt._key, { colorKey: cKey })
                               }
                               className={`h-5 w-5 rounded-full ${c.previewBg} transition-transform flex items-center justify-center cursor-pointer ${
                                 isSelected
@@ -260,7 +299,7 @@ export function StatusManagerModal({
                       {options.length > 1 && (
                         <button
                           type="button"
-                          onClick={() => handleDeleteOption(opt.id)}
+                          onClick={() => handleDeleteOption(opt._key)}
                           className="p-1 rounded-sm text-accent-4 hover:text-red-400 hover:bg-red-500/10 ml-1 cursor-pointer transition-colors"
                           title="Delete status"
                         >

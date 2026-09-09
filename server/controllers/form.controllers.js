@@ -595,44 +595,10 @@ export async function handleSubmitAResponse(req, res) {
     }
 
     // Automated Google Sheets sync if configured
-    const sheetConfig = form.settings?.googleSheet;
-    if (sheetConfig?.connected && (sheetConfig?.autoSync || sheetConfig?.syncMode === "automated") && sheetConfig?.webhookUrl) {
-      void (async () => {
-        try {
-          const questions = (form.questions || []).filter((q) => q.type !== "section_break");
-          const submissionDate = formatSubmissionDate(
-            response.submittedAt,
-            req.body?.clientTimeZone || req.body?.timeZone,
-            req.body?.clientSubmittedAt || req.body?.clientTime
-          );
-          const rowData = [
-            response._id.toString(),
-            response.status || "unreviewed",
-            submissionDate,
-            response.respondentEmail || "Anonymous",
-            ...questions.map((q) => {
-              const ans = response.answers.find((a) => a.questionId === q.id);
-              return formatAnswerForSpreadsheet(ans);
-            }),
-          ];
-
-          await fetch(sheetConfig.webhookUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "append_row",
-              formId: form._id.toString(),
-              formTitle: form.title,
-              sheetName: sheetConfig.sheetName || "Responses",
-              row: rowData,
-              timestamp: new Date().toISOString(),
-            }),
-          });
-        } catch (sheetErr) {
-          console.error("[Google Sheet Auto-Sync Error]:", sheetErr.message);
-        }
-      })();
-    }
+    void triggerGoogleSheetAppendRow(form, response, {
+      timeZone: req.body?.clientTimeZone || req.body?.timeZone,
+      clientTime: req.body?.clientSubmittedAt || req.body?.clientTime,
+    });
 
     res.status(201).json(response);
   } catch (error) {
@@ -757,6 +723,7 @@ export async function handleUpdateResponse(req, res) {
 
     await response.save();
     broadcastFormEvent(formId, "response_updated", response, cleanBody.clientId);
+    void triggerGoogleSheetUpdateRow(form, response);
     res.json(response);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -788,6 +755,7 @@ export async function handleDeleteSingleResponse(req, res) {
 
     await Form.findByIdAndUpdate(formId, { $inc: { responseCount: -1 } });
     broadcastFormEvent(formId, "response_deleted", { responseId });
+    void triggerGoogleSheetDeleteRow(form, responseId);
     res.json({ message: "Response deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -823,6 +791,7 @@ export async function handleBulkDeleteResponses(req, res) {
     });
 
     broadcastFormEvent(formId, "responses_bulk_deleted", { responseIds });
+    void triggerGoogleSheetSyncAll(formId, form);
     res.json({ message: `${result.deletedCount} responses deleted successfully` });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -855,6 +824,7 @@ export async function handleBulkUpdateResponseStatus(req, res) {
     );
 
     broadcastFormEvent(formId, "responses_status_updated", { responseIds, status });
+    void triggerGoogleSheetSyncAll(formId, form);
     res.json({ message: "Responses status updated successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -887,7 +857,7 @@ export async function handleManualCreateResponse(req, res) {
       submittedAt: new Date(),
       updatedAt: new Date(),
       respondentEmail: cleanBody.respondentEmail || null,
-      status: cleanBody.status || "unreviewed",
+      status: cleanBody.status || "Unreviewed",
       tags: cleanBody.tags || ["manual"],
       editedBy: editorName,
       answers: cleanBody.answers || [],
@@ -902,6 +872,7 @@ export async function handleManualCreateResponse(req, res) {
     await form.save();
 
     broadcastFormEvent(formId, "response_created", newResponse, cleanBody.clientId);
+    void triggerGoogleSheetAppendRow(form, newResponse);
     res.status(201).json(newResponse);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -1326,6 +1297,249 @@ export async function handleSyncGoogleSheet(req, res) {
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+}
+
+// Helper to format a single response into a row array for Google Sheets
+export function formatRowForGoogleSheets(form, response, options = {}) {
+  const questions = (form.questions || []).filter((q) => q.type !== "section_break");
+  const submissionDate = formatSubmissionDate(
+    response.submittedAt,
+    options.timeZone || response.clientTimeZone,
+    options.clientTime || response.clientSubmittedAt
+  );
+
+  return [
+    response._id.toString(),
+    response.status || "Unreviewed",
+    submissionDate,
+    response.respondentEmail || "Anonymous",
+    ...questions.map((q) => {
+      const ans = response.answers?.find((a) => a.questionId === q.id);
+      return formatAnswerForSpreadsheet(ans);
+    }),
+  ];
+}
+
+// Background auto-sync helper for appending a brand new row
+export async function triggerGoogleSheetAppendRow(form, response, options = {}) {
+  try {
+    if (!form || !response) return;
+    const sheetConfig = form.settings?.googleSheet;
+    if (
+      !sheetConfig ||
+      !sheetConfig.connected ||
+      (!sheetConfig.autoSync && sheetConfig.syncMode !== "automated") ||
+      !sheetConfig.webhookUrl
+    ) {
+      return;
+    }
+
+    const questions = (form.questions || []).filter((q) => q.type !== "section_break");
+    const headers = [
+      "Response ID",
+      "Status",
+      "Submission Date",
+      "Respondent Email",
+      ...questions.map((q) => q.title),
+    ];
+    const row = formatRowForGoogleSheets(form, response, options);
+
+    const payload = {
+      action: "append_row",
+      formId: form._id.toString(),
+      formTitle: form.title,
+      sheetUrl: sheetConfig.sheetUrl,
+      sheetId: sheetConfig.sheetId,
+      sheetName: sheetConfig.sheetName || "Responses",
+      headers,
+      row,
+      timestamp: new Date().toISOString(),
+    };
+
+    fetch(sheetConfig.webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      redirect: "follow",
+    })
+      .then((res) => {
+        if (res.ok) {
+          Form.findByIdAndUpdate(form._id, { "settings.googleSheet.lastSyncedAt": new Date() })
+            .exec()
+            .catch(() => {});
+        } else {
+          console.warn("[Google Sheet Append-Row Warning] Status:", res.status);
+        }
+      })
+      .catch((err) => {
+        console.error("[Google Sheet Append-Row Error]:", err.message);
+      });
+  } catch (err) {
+    console.error("[Google Sheet Append-Row Trigger Error]:", err.message);
+  }
+}
+
+// Background auto-sync helper for updating an existing row in-place by uniqueKey
+export async function triggerGoogleSheetUpdateRow(form, response, options = {}) {
+  try {
+    if (!form || !response) return;
+    const sheetConfig = form.settings?.googleSheet;
+    if (
+      !sheetConfig ||
+      !sheetConfig.connected ||
+      (!sheetConfig.autoSync && sheetConfig.syncMode !== "automated") ||
+      !sheetConfig.webhookUrl
+    ) {
+      return;
+    }
+
+    const row = formatRowForGoogleSheets(form, response, options);
+
+    const payload = {
+      action: "update_row",
+      uniqueKey: response._id.toString(),
+      formId: form._id.toString(),
+      formTitle: form.title,
+      sheetUrl: sheetConfig.sheetUrl,
+      sheetId: sheetConfig.sheetId,
+      sheetName: sheetConfig.sheetName || "Responses",
+      row,
+      timestamp: new Date().toISOString(),
+    };
+
+    fetch(sheetConfig.webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      redirect: "follow",
+    })
+      .then((res) => {
+        if (res.ok) {
+          Form.findByIdAndUpdate(form._id, { "settings.googleSheet.lastSyncedAt": new Date() })
+            .exec()
+            .catch(() => {});
+        } else {
+          console.warn("[Google Sheet Update-Row Warning] Status:", res.status);
+        }
+      })
+      .catch((err) => {
+        console.error("[Google Sheet Update-Row Error]:", err.message);
+      });
+  } catch (err) {
+    console.error("[Google Sheet Update-Row Trigger Error]:", err.message);
+  }
+}
+
+// Background auto-sync helper for deleting a specific row by uniqueKey
+export async function triggerGoogleSheetDeleteRow(form, responseId) {
+  try {
+    if (!form || !responseId) return;
+    const sheetConfig = form.settings?.googleSheet;
+    if (
+      !sheetConfig ||
+      !sheetConfig.connected ||
+      (!sheetConfig.autoSync && sheetConfig.syncMode !== "automated") ||
+      !sheetConfig.webhookUrl
+    ) {
+      return;
+    }
+
+    const payload = {
+      action: "delete_row",
+      uniqueKey: responseId.toString(),
+      formId: form._id.toString(),
+      formTitle: form.title,
+      sheetUrl: sheetConfig.sheetUrl,
+      sheetId: sheetConfig.sheetId,
+      sheetName: sheetConfig.sheetName || "Responses",
+      timestamp: new Date().toISOString(),
+    };
+
+    fetch(sheetConfig.webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      redirect: "follow",
+    })
+      .then((res) => {
+        if (res.ok) {
+          Form.findByIdAndUpdate(form._id, { "settings.googleSheet.lastSyncedAt": new Date() })
+            .exec()
+            .catch(() => {});
+        } else {
+          console.warn("[Google Sheet Delete-Row Warning] Status:", res.status);
+        }
+      })
+      .catch((err) => {
+        console.error("[Google Sheet Delete-Row Error]:", err.message);
+      });
+  } catch (err) {
+    console.error("[Google Sheet Delete-Row Trigger Error]:", err.message);
+  }
+}
+
+// Full sync helper (sync_all) for manual "Sync Now" button or bulk operations
+export async function triggerGoogleSheetSyncAll(formId, passedForm = null) {
+  try {
+    const form = passedForm || (await Form.findById(formId));
+    if (!form) return;
+
+    const sheetConfig = form.settings?.googleSheet;
+    if (
+      !sheetConfig ||
+      !sheetConfig.connected ||
+      !sheetConfig.webhookUrl
+    ) {
+      return;
+    }
+
+    const responses = await Response.find({ formId }).sort({ submittedAt: 1 });
+    const questions = (form.questions || []).filter((q) => q.type !== "section_break");
+
+    const headers = [
+      "Response ID",
+      "Status",
+      "Submission Date",
+      "Respondent Email",
+      ...questions.map((q) => q.title),
+    ];
+
+    const rows = responses.map((r) => formatRowForGoogleSheets(form, r));
+
+    const payload = {
+      action: "sync_all",
+      formId: form._id.toString(),
+      formTitle: form.title,
+      sheetUrl: sheetConfig.sheetUrl,
+      sheetId: sheetConfig.sheetId,
+      sheetName: sheetConfig.sheetName || "Responses",
+      headers,
+      rows,
+      count: rows.length,
+      timestamp: new Date().toISOString(),
+    };
+
+    fetch(sheetConfig.webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      redirect: "follow",
+    })
+      .then((res) => {
+        if (res.ok) {
+          Form.findByIdAndUpdate(formId, { "settings.googleSheet.lastSyncedAt": new Date() })
+            .exec()
+            .catch(() => {});
+        } else {
+          console.warn("[Google Sheet Sync-All Warning] Status:", res.status);
+        }
+      })
+      .catch((err) => {
+        console.error("[Google Sheet Sync-All Error]:", err.message);
+      });
+  } catch (err) {
+    console.error("[Google Sheet Sync-All Trigger Error]:", err.message);
   }
 }
 
