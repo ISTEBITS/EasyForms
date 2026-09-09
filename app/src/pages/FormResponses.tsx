@@ -52,16 +52,8 @@ export const FormResponses = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Status options (persisted and shared across header & grid)
-  const [statusOptions, setStatusOptions] = useState<StatusOption[]>(() => {
-    try {
-      const saved = localStorage.getItem("easyforms_custom_statuses");
-      if (saved) return JSON.parse(saved);
-    } catch {
-      // fallback
-    }
-    return DEFAULT_STATUS_OPTIONS;
-  });
+  // Status options (persisted on form and shared across all users/collaborators)
+  const [statusOptions, setStatusOptions] = useState<StatusOption[]>(DEFAULT_STATUS_OPTIONS);
 
   // View Mode: Sheet or Analytics
   const [viewMode, setViewMode] = useState<ViewMode>("sheet");
@@ -124,6 +116,9 @@ export const FormResponses = () => {
     },
     onFormUpdated: (updatedForm) => {
       setForm((prev) => (prev ? { ...prev, ...updatedForm } : updatedForm));
+      if (updatedForm.settings?.statusOptions && updatedForm.settings.statusOptions.length > 0) {
+        setStatusOptions(updatedForm.settings.statusOptions);
+      }
     },
   });
 
@@ -166,6 +161,9 @@ export const FormResponses = () => {
         }
 
         setForm(formData);
+        if (formData.settings?.statusOptions && formData.settings.statusOptions.length > 0) {
+          setStatusOptions(formData.settings.statusOptions);
+        }
         setResponses(responsesData);
       } catch (err: unknown) {
         const message =
@@ -210,9 +208,10 @@ export const FormResponses = () => {
       });
     }
 
-    // Status filter
+    // Status filter (case-insensitive and uniform across legacy/new values)
     if (statusFilter !== "all") {
-      list = list.filter((r) => (r.status || "unreviewed") === statusFilter);
+      const filterLower = statusFilter.toLowerCase();
+      list = list.filter((r) => (r.status || "Unreviewed").toLowerCase() === filterLower);
     }
 
     // Sort
@@ -228,8 +227,8 @@ export const FormResponses = () => {
           valA = a.respondentEmail || "";
           valB = b.respondentEmail || "";
         } else if (sortColumn === "status") {
-          valA = a.status || "unreviewed";
-          valB = b.status || "unreviewed";
+          valA = (a.status || "Unreviewed").toLowerCase();
+          valB = (b.status || "Unreviewed").toLowerCase();
         } else {
           // Question column
           const ansA = a.answers?.find((ans) => ans.questionId === sortColumn)?.value;
@@ -368,24 +367,46 @@ export const FormResponses = () => {
     }
   };
 
-  const handleStatusOptionsChange = (newOptions: StatusOption[], renameMap?: Record<string, string>) => {
+  const handleStatusOptionsChange = async (newOptions: StatusOption[], renameMap?: Record<string, string>) => {
     setStatusOptions(newOptions);
-    try {
-      localStorage.setItem("easyforms_custom_statuses", JSON.stringify(newOptions));
-    } catch {
-      // ignore
-    }
 
     if (renameMap && Object.keys(renameMap).length > 0) {
       setResponses((prev) =>
         prev.map((r) => {
-          const curr = r.status || "";
+          const curr = r.status || "Unreviewed";
           if (renameMap[curr] || renameMap[curr.toLowerCase()]) {
-            return { ...r, status: renameMap[curr] || renameMap[curr.toLowerCase()] };
+            return { ...r, status: (renameMap[curr] || renameMap[curr.toLowerCase()]) as ResponseStatus };
           }
           return r;
         })
       );
+    }
+
+    if (!form) return;
+
+    try {
+      const updatedSettings = {
+        ...form.settings,
+        statusOptions: newOptions,
+      };
+      await formsApi.update(form.id, { settings: updatedSettings });
+      setForm((prev) => (prev ? { ...prev, settings: updatedSettings } : null));
+
+      if (renameMap && Object.keys(renameMap).length > 0) {
+        for (const [oldKey, newVal] of Object.entries(renameMap)) {
+          const affectedIds = responses
+            .filter((r) => (r.status === oldKey || (r.status || "Unreviewed").toLowerCase() === oldKey.toLowerCase()))
+            .map((r) => r.id || r._id)
+            .filter(Boolean) as string[];
+          if (affectedIds.length > 0) {
+            await formsApi.bulkUpdateResponseStatus(form.id, affectedIds, newVal);
+          }
+        }
+      }
+      toast.success("Status options updated");
+    } catch (err) {
+      console.error("Failed to persist status options:", err);
+      toast.error("Failed to save status options to server");
     }
   };
 

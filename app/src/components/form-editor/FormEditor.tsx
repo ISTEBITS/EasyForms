@@ -58,7 +58,6 @@ import { SdkPanel } from "../form-editor/SdkPanel";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { useForms } from "@/hooks/useForms";
 import { uploadFile } from "@/api";
-import { saveMediaAsset } from "@/utils/mediaLibrary";
 import { useAuth } from "@/context/auth";
 import type { Form, Question, QuestionType, FormTheme } from "@/types/form";
 import { DEFAULT_QUESTION } from "@/types/form";
@@ -306,13 +305,13 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
       if (uploadingTarget) return;
       setUploadingTarget(target);
       try {
-        const uploaded = await uploadFile(file);
-        saveMediaAsset({
-          url: uploaded.url,
-          name: file.name,
-          type: target === "logoUrl" ? "logo" : target === "bannerUrl" ? "banner" : "background",
-          sizeBytes: file.size,
-        });
+        const detectedType =
+          target === "logoUrl"
+            ? "logo"
+            : target === "bannerUrl"
+              ? "banner"
+              : "background";
+        const uploaded = await uploadFile(file, detectedType);
 
         updateFormState((prev) => ({
           ...prev,
@@ -438,7 +437,6 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
 
       await updateForm(formId, nextForm);
       setIsDirty(false);
-      toast.success("Form saved successfully");
     } catch {
       toast.error("Failed to save form");
     } finally {
@@ -667,12 +665,11 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
                 size="sm"
                 disabled={isSaving}
                 variant="default"
-                className="h-8 rounded-xs font-medium text-sm px-2.5 sm:px-4"
+                className="h-8 rounded-xs font-medium text-sm px-2.5 sm:px-4 w-20"
               >
                 {isSaving ? (
                   <>
                     <Loader className="h-3.5 w-3.5 sm:mr-1.5 animate-spin" />
-                    <span className="hidden sm:inline">Saving...</span>
                   </>
                 ) : (
                   <>

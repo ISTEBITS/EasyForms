@@ -26,7 +26,6 @@ export function LoginPage() {
     setIsLoading(true);
     try {
       await login({ username, password });
-      toast.success("Welcome back, Admin");
       navigate(from, { replace: true });
     } catch (error: unknown) {
       const message =

@@ -118,7 +118,7 @@ export const ResponsesShareModal: React.FC<ResponsesShareModalProps> = ({
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
               required
-              className="flex-1 rounded-sm border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-accent-4 focus:outline-none focus:ring-1 focus:ring-foreground"
+              className="flex-1 rounded-sm border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-accent-4 focus:outline-none focus:ring-1 focus:ring-foreground max-w-[50%] sm:max-w-full"
             />
             <select
               value={inviteRole}
@@ -140,7 +140,7 @@ export const ResponsesShareModal: React.FC<ResponsesShareModalProps> = ({
               ) : (
                 <UserPlus className="h-3.5 w-3.5" />
               )}
-              <span>Invite</span>
+              <span className="hidden sm:block">Invite</span>
             </Button>
           </div>
 

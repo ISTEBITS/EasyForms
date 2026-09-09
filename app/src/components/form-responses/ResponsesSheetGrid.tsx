@@ -100,20 +100,10 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
   statusOptions: statusOptionsProp,
   onStatusOptionsChange,
 }) => {
-  // Status Options with persistence
-  const [localStatusOptions, setLocalStatusOptions] = useState<StatusOption[]>(
-    () => {
-      try {
-        const saved = localStorage.getItem("easyforms_custom_statuses");
-        if (saved) return JSON.parse(saved);
-      } catch {
-        // fallback
-      }
-      return DEFAULT_STATUS_OPTIONS;
-    }
-  );
-
-  const statusOptions = statusOptionsProp || localStatusOptions;
+  const statusOptions =
+    statusOptionsProp && statusOptionsProp.length > 0
+      ? statusOptionsProp
+      : DEFAULT_STATUS_OPTIONS;
   const [isStatusManagerOpen, setIsStatusManagerOpen] = useState(false);
 
   // Column Widths with local persistence
@@ -682,16 +672,7 @@ export const ResponsesSheetGrid: React.FC<ResponsesSheetGridProps> = ({
     newOptions: StatusOption[],
     renameMap?: Record<string, string>
   ) => {
-    setLocalStatusOptions(newOptions);
     onStatusOptionsChange?.(newOptions, renameMap);
-    try {
-      localStorage.setItem(
-        "easyforms_custom_statuses",
-        JSON.stringify(newOptions)
-      );
-    } catch {
-      // ignore
-    }
   };
 
   return (

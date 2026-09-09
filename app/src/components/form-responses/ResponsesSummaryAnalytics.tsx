@@ -155,9 +155,10 @@ export const ResponsesSummaryAnalytics: React.FC<ResponsesSummaryAnalyticsProps>
 
   const uniqueEmailsCount = new Set(responses.map((r) => r.respondentEmail).filter(Boolean)).size;
 
-  const reviewedCount = responses.filter(
-    (r) => r.status === "reviewed" || r.status === "approved"
-  ).length;
+  const reviewedCount = responses.filter((r) => {
+    const s = String(r.status || "Unreviewed").toLowerCase();
+    return s !== "" && s !== "unreviewed";
+  }).length;
 
   const reviewPercentage = total > 0 ? Math.round((reviewedCount / total) * 100) : 0;
 
@@ -395,7 +396,7 @@ export const ResponsesSummaryAnalytics: React.FC<ResponsesSummaryAnalyticsProps>
                     {allAnswersForQ.length === 0 ? (
                       <p className="text-sm text-accent-4 italic py-2">No responses recorded yet.</p>
                     ) : (
-                      <div className="flex flex-wrap gap-2 max-h-44 overflow-y-auto pr-1">
+                      <div className="flex flex-col gap-2 max-h-44 overflow-y-auto pr-1">
                         {(() => {
                           // Group identical numbers to show frequencies cleanly
                           const countsMap = new Map<string, number>();
@@ -409,7 +410,7 @@ export const ResponsesSummaryAnalytics: React.FC<ResponsesSummaryAnalyticsProps>
                               key={numVal}
                               className="inline-flex items-center gap-2 rounded-sm border border-border bg-accent-1/40 px-3 py-1.5 text-sm font-sans"
                             >
-                              <span className="font-semibold text-foreground text-base">
+                              <span className="text-foreground text-base">
                                 {numVal}
                               </span>
                               {count > 1 && (

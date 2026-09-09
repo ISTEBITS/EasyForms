@@ -60,11 +60,26 @@ const APPS_SCRIPT_CODE = `function doPost(e) {
       return typeof val === "object" ? JSON.stringify(val) : String(val);
     }
 
+    // Helper: Finds the actual last row of EasyForms responses based on Column 1 (Response ID)
+    // This prevents custom user columns (e.g. pre-filled down to row 50) from pushing new responses down
+    function getEasyFormsLastRow(targetSheet) {
+      var totalRows = targetSheet.getLastRow();
+      if (totalRows <= 1) return totalRows;
+      var col1Values = targetSheet.getRange(1, 1, totalRows, 1).getValues();
+      for (var r = col1Values.length - 1; r >= 0; r--) {
+        var v = col1Values[r][0];
+        if (v !== undefined && v !== null && String(v).trim() !== "") {
+          return r + 1;
+        }
+      }
+      return 1;
+    }
+
     // 1. ACTION: sync_all (Preserves custom user columns if present)
     if (data.action === "sync_all" && data.headers && Array.isArray(data.rows)) {
       var numEasyCols = data.headers.length;
       var lastCol = Math.max(sheet.getLastColumn(), numEasyCols);
-      var lastRow = Math.max(sheet.getLastRow(), 1);
+      var prevEasyLastRow = Math.max(getEasyFormsLastRow(sheet), 1);
 
       // Write/update EasyForms headers in Row 1 without wiping custom columns
       var formattedHeaders = data.headers.map(formatVal);
@@ -88,12 +103,12 @@ const APPS_SCRIPT_CODE = `function doPost(e) {
         // Format data rows with comfortable cell padding & middle alignment
         formatDataRows(sheet, 2, formattedRows.length, numEasyCols);
 
-        if (lastRow > formattedRows.length + 1) {
-          sheet.getRange(formattedRows.length + 2, 1, lastRow - (formattedRows.length + 1), numEasyCols).clearContent();
+        if (prevEasyLastRow > formattedRows.length + 1) {
+          sheet.getRange(formattedRows.length + 2, 1, prevEasyLastRow - (formattedRows.length + 1), numEasyCols).clearContent();
         }
       } else {
-        if (lastRow > 1) {
-          sheet.getRange(2, 1, lastRow - 1, numEasyCols).clearContent();
+        if (prevEasyLastRow > 1) {
+          sheet.getRange(2, 1, prevEasyLastRow - 1, numEasyCols).clearContent();
         }
       }
 
@@ -107,28 +122,28 @@ const APPS_SCRIPT_CODE = `function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
-    // 2. ACTION: append_row (Appends new submission without overwriting user columns)
+    // 2. ACTION: append_row (Appends new submission cleanly right after the last EasyForms response)
     if (data.action === "append_row" && data.row) {
       var rowData = Array.isArray(data.row) ? data.row.map(formatVal) : [formatVal(data.row)];
       var numCols = rowData.length;
+      var easyLastRow = getEasyFormsLastRow(sheet);
 
-      if (sheet.getLastRow() === 0 && data.headers && Array.isArray(data.headers)) {
+      if (easyLastRow === 0 && data.headers && Array.isArray(data.headers)) {
         sheet.getRange(1, 1, 1, data.headers.length).setValues([data.headers.map(formatVal)]);
         formatHeaderRow(sheet, data.headers.length, 1);
+        adjustColumnWidthsAndPadding(sheet, data.headers.length);
+        easyLastRow = 1;
       }
 
-      var nextRow = sheet.getLastRow() + 1;
+      var nextRow = easyLastRow + 1;
       sheet.getRange(nextRow, 1, 1, numCols).setValues([rowData]);
 
-      // Apply comfortable cell padding and formatting
+      // Apply cell formatting & 32px height only to the newly appended row
       formatDataRows(sheet, nextRow, 1, numCols);
 
       // Apply alternating subtle grayish background touch to the new row
       var rowBg = (nextRow % 2 === 0) ? "#FFFFFF" : "#F8F9FA";
       sheet.getRange(nextRow, 1, 1, numCols).setBackground(rowBg);
-
-      // Adjust column width padding
-      adjustColumnWidthsAndPadding(sheet, numCols);
 
       return ContentService.createTextOutput(JSON.stringify({ status: "success", appended: true, rowNumber: nextRow }))
         .setMimeType(ContentService.MimeType.JSON);
@@ -140,11 +155,11 @@ const APPS_SCRIPT_CODE = `function doPost(e) {
       var numCols = rowData.length;
       var uniqueKey = String(data.uniqueKey || (rowData.length > 0 ? rowData[0] : "")).trim();
 
-      var lastRow = sheet.getLastRow();
+      var easyLastRow = getEasyFormsLastRow(sheet);
       var foundRow = -1;
 
-      if (lastRow > 1) {
-        var idColumnValues = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+      if (easyLastRow > 1) {
+        var idColumnValues = sheet.getRange(2, 1, easyLastRow - 1, 1).getValues();
         for (var r = 0; r < idColumnValues.length; r++) {
           if (String(idColumnValues[r][0]).trim() === uniqueKey) {
             foundRow = r + 2;
@@ -163,7 +178,7 @@ const APPS_SCRIPT_CODE = `function doPost(e) {
         return ContentService.createTextOutput(JSON.stringify({ status: "success", updated: true, rowNumber: foundRow }))
           .setMimeType(ContentService.MimeType.JSON);
       } else {
-        var targetRow = lastRow + 1;
+        var targetRow = easyLastRow + 1;
         sheet.getRange(targetRow, 1, 1, numCols).setValues([rowData]);
         formatDataRows(sheet, targetRow, 1, numCols);
 
@@ -177,9 +192,9 @@ const APPS_SCRIPT_CODE = `function doPost(e) {
     // 4. ACTION: delete_row (Deletes specific row by uniqueKey matching Column 1)
     if (data.action === "delete_row" && data.uniqueKey) {
       var uniqueKey = String(data.uniqueKey).trim();
-      var lastRow = sheet.getLastRow();
-      if (lastRow > 1) {
-        var idColumnValues = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+      var easyLastRow = getEasyFormsLastRow(sheet);
+      if (easyLastRow > 1) {
+        var idColumnValues = sheet.getRange(2, 1, easyLastRow - 1, 1).getValues();
         for (var r = 0; r < idColumnValues.length; r++) {
           if (String(idColumnValues[r][0]).trim() === uniqueKey) {
             sheet.deleteRow(r + 2);
